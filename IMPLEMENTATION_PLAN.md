@@ -1,19 +1,26 @@
-# XAURA — 6-Week Implementation Plan (Phase 1, CPU-Only)
+# XAURA — 6-Week Implementation Plan (Phase 1 + Phase 2)
 
 > **eXtendable Automated Unified Research & Analytics**
-> A Python-based intelligent ML library with dataset-aware defaults, experiment tracking, and a local web UI.
+> A Python-based intelligent ML library with dataset-aware defaults, experiment tracking, a local web UI, and an agentic conversational interface.
 
 ---
 
 ## Overview
 
-This document outlines the complete 6-week build plan for XAURA Phase 1. All models are **CPU-only** (scikit-learn, XGBoost, LightGBM). Deep learning models (PyTorch/TensorFlow) are deferred to Phase 2.
+This document outlines the complete 6-week build plan covering **both phases** of XAURA:
 
-Two contributors (**Person A** and **Person B**) work in parallel, with tasks divided so that **both touch every layer** — core library, store, visualisation, server/UI, and tests. Neither becomes a single-area specialist.
+- **Phase 1 (Weeks 1–4):** Core library, models, visualisation, experiment tracking, FastAPI server, web UI, CLI
+- **Phase 2 (Weeks 5–6):** Agentic layer — conversational interface, data ingestion, model recommendation, plain-language explanations, hyperparameter suggestions
+
+All Phase 1 models are **CPU-only** (scikit-learn, XGBoost, LightGBM). Phase 2 adds an LLM-backed agent that orchestrates Phase 1 functions via natural language.
+
+Two contributors (**Person A** and **Person B**) work in parallel. Tasks are divided so **both touch every layer** — core library, store, visualisation, server/UI, agent, and tests.
 
 ---
 
 ## Tech Stack Summary
+
+### Phase 1 — Core Library & UI
 
 | Layer | Technology |
 |---|---|
@@ -30,298 +37,449 @@ Two contributors (**Person A** and **Person B**) work in parallel, with tasks di
 | Testing | pytest + pytest-cov |
 | CI | GitHub Actions |
 
+### Phase 2 — Agentic Layer
+
+| Layer | Technology |
+|---|---|
+| LLM Backend | Google Gemini API / OpenAI API (switchable) |
+| Conversation Management | Custom session handler (in-memory + SQLite) |
+| Data Ingestion | pandas (CSV/Excel/Parquet/JSON), sqlalchemy (DB connections), requests (URL download) |
+| Agent Framework | Custom lightweight agent (no LangChain — keeps it simple and learnable) |
+| Chat UI | WebSocket via FastAPI + vanilla JS chat interface |
+
 ---
 
-## Week 1 — Project Foundation & Data Profiling
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         USER INTERFACES                         │
+│  ┌────────────┐  ┌────────────┐  ┌──────────┐  ┌────────────┐  │
+│  │  Web UI     │  │  Chat UI   │  │   CLI    │  │ Python API │  │
+│  │ (Dashboard) │  │  (Agent)   │  │          │  │            │  │
+│  └─────┬──────┘  └─────┬──────┘  └────┬─────┘  └─────┬──────┘  │
+└────────┼───────────────┼──────────────┼──────────────┼──────────┘
+         │               │              │              │
+         ▼               ▼              ▼              ▼
+┌────────────────┐  ┌─────────────────────────────────────────────┐
+│  FastAPI Server │  │            AGENT LAYER (Phase 2)            │
+│  REST Routes    │  │  • Data ingestion (file/URL/DB)             │
+│  WebSocket      │  │  • Model recommendation                    │
+│  Static Files   │  │  • Result explanation                      │
+│                 │  │  • Hyperparameter suggestion                │
+│                 │  │  • Conversation history                     │
+│                 │  │                                             │
+│                 │  │  Calls Phase 1 functions — never bypasses   │
+└────────┬────────┘  └──────────────────┬──────────────────────────┘
+         │                              │
+         ▼                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     CORE LIBRARY (Phase 1)                       │
+│  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌───────────┐      │
+│  │ Profiler  │  │  Models   │  │   Viz     │  │  Export    │      │
+│  │profile()  │  │run_model()│  │plotly/mpl │  │zip/csv/png│      │
+│  │DataProfile│  │Result     │  │           │  │           │      │
+│  └──────────┘  └──────────┘  └───────────┘  └───────────┘      │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        STORE (SQLite)                            │
+│         Experiments · Conversation History · Data Cache          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Project Structure (Final — Both Phases)
+
+```
+xaura/
+├── pyproject.toml
+├── README.md
+├── IMPLEMENTATION_PLAN.md
+├── LICENSE
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── src/
+│   └── xaura/
+│       ├── __init__.py               # Public API
+│       ├── cli.py                    # CLI commands
+│       │
+│       ├── profiler/                 # Week 1
+│       │   ├── __init__.py
+│       │   ├── profiler.py
+│       │   └── dataprofile.py
+│       │
+│       ├── models/                   # Week 2
+│       │   ├── __init__.py
+│       │   ├── base.py
+│       │   ├── registry.py
+│       │   ├── defaults.py
+│       │   ├── classifiers/
+│       │   │   ├── logistic.py
+│       │   │   ├── random_forest.py
+│       │   │   ├── xgboost_cls.py
+│       │   │   └── lightgbm_cls.py
+│       │   ├── regressors/
+│       │   │   ├── linear.py
+│       │   │   ├── ridge_lasso.py
+│       │   │   ├── random_forest_reg.py
+│       │   │   └── xgboost_reg.py
+│       │   └── clusterers/
+│       │       ├── kmeans.py
+│       │       ├── dbscan.py
+│       │       └── hierarchical.py
+│       │
+│       ├── visualisation/            # Week 3
+│       │   ├── __init__.py
+│       │   ├── plotly_charts.py
+│       │   └── matplotlib_charts.py
+│       │
+│       ├── store/                    # Week 1
+│       │   ├── __init__.py
+│       │   └── sqlite_store.py
+│       │
+│       ├── export/                   # Week 3
+│       │   ├── __init__.py
+│       │   └── exporter.py
+│       │
+│       ├── server/                   # Week 4
+│       │   ├── __init__.py
+│       │   ├── app.py
+│       │   ├── routes/
+│       │   │   ├── profile_routes.py
+│       │   │   ├── model_routes.py
+│       │   │   ├── experiment_routes.py
+│       │   │   ├── export_routes.py
+│       │   │   └── agent_routes.py   # Week 5
+│       │   ├── static/
+│       │   │   ├── css/style.css
+│       │   │   └── js/
+│       │   │       ├── app.js
+│       │   │       ├── plots.js
+│       │   │       ├── experiments.js
+│       │   │       └── chat.js       # Week 5
+│       │   └── templates/
+│       │       ├── base.html
+│       │       ├── index.html
+│       │       ├── profile.html
+│       │       ├── run.html
+│       │       ├── experiments.html
+│       │       └── chat.html         # Week 5
+│       │
+│       └── agent/                    # Weeks 5-6
+│           ├── __init__.py
+│           ├── engine.py             # Core agent orchestrator
+│           ├── llm_client.py         # LLM API wrapper (Gemini/OpenAI)
+│           ├── ingestion.py          # Multi-source data loading
+│           ├── recommender.py        # Model recommendation logic
+│           ├── explainer.py          # Plain-language result explanation
+│           ├── tuner.py              # Hyperparameter suggestion engine
+│           ├── prompts.py            # System prompts & prompt templates
+│           └── session.py            # Conversation history manager
+│
+└── tests/
+    ├── conftest.py
+    ├── test_profiler.py
+    ├── test_classifiers.py
+    ├── test_regressors.py
+    ├── test_clusterers.py
+    ├── test_store.py
+    ├── test_export.py
+    ├── test_api.py
+    ├── test_agent.py                 # Week 6
+    ├── test_ingestion.py             # Week 6
+    └── test_e2e.py                   # Week 6
+```
+
+---
+
+## Week 1 — Project Foundation, Profiling & Store
 
 ### Goals
-- Project scaffolding is complete and installable via `pip install -e .`
-- `profile()` function works end-to-end on any CSV/DataFrame
-- SQLite store schema is defined and basic CRUD works
-- CI pipeline runs on every PR
+- Project is installable via `pip install -e .`
+- `profile()` works end-to-end on any DataFrame/CSV
+- SQLite store handles full CRUD
+- CI runs on every PR
 
 ### Person A
 
 | Task | Details |
 |---|---|
-| **Project setup** | Create `pyproject.toml` with all dependencies, entry points, dev extras. Set up `src/xaura/` layout. |
-| **`.gitignore` + CI** | Standard Python `.gitignore`. GitHub Actions workflow: test + lint on push/PR for Python 3.10-3.12. |
-| **DataProfile dataclass** | Implement `src/xaura/profiler/dataprofile.py` — all fields (shape, feature_types, class_balance, missing_values, correlations, basic_stats, warnings), properties (`is_imbalanced`, `is_small`, `has_missing`), and `summary()` method. |
-| **Profiler core** | Implement `profile()` in `src/xaura/profiler/profiler.py` — shape detection, feature type inference (numeric/categorical/binary/datetime), basic statistics (mean, std, min, max, skew). |
-| **Tests** | `tests/conftest.py` (shared sample datasets), `tests/test_profiler.py` (core profiling logic). |
+| **Project setup** | `pyproject.toml` with all dependencies (including Phase 2 deps as optional: `google-generativeai`, `openai`, `sqlalchemy`, `requests`). `src/xaura/` layout with all `__init__.py` files. |
+| **`.gitignore` + CI** | Python `.gitignore`. GitHub Actions: test + lint for Python 3.10–3.12. |
+| **DataProfile dataclass** | `dataprofile.py` — all fields, properties (`is_imbalanced`, `is_small`, `has_missing`), `summary()` method. |
+| **Profiler core** | `profile()` — shape detection, feature type inference, basic statistics (mean, std, min, max, skew). |
+| **Tests** | `conftest.py` (sample datasets: classification, regression, clustering, edge cases). `test_profiler.py`. |
 
 ### Person B
 
 | Task | Details |
 |---|---|
-| **LICENSE + pre-commit** | MIT License file. Set up `pre-commit-config.yaml` with ruff + black hooks. |
-| **Profiler extensions** | Extend `profile()` with: class balance detection, correlation matrix + high-correlation pair flagging (|r| > 0.85), missing value analysis (counts + percentages), and warning generation. |
-| **Target column detection** | Heuristic to identify target column and infer task type (classification vs regression). |
-| **SQLite store** | `src/xaura/store/sqlite_store.py` — schema design, `init_db()`, `create_run()`, `get_run()`, `list_runs()`, `delete_run()`. |
-| **Tests** | `tests/test_store.py` (all CRUD operations, edge cases). |
+| **LICENSE + pre-commit** | MIT License. `pre-commit-config.yaml` with ruff + black. |
+| **Profiler extensions** | Class balance detection, correlation matrix, high-correlation flagging (|r| > 0.85), missing value analysis, warning generation. |
+| **Target detection** | Heuristic to identify target column + infer task type (classification vs regression). |
+| **SQLite store** | `sqlite_store.py` — schema, `init_db()`, `create_run()`, `get_run()`, `list_runs()`, `delete_run()`, `get_metrics_comparison()`. |
+| **Tests** | `test_store.py` — all CRUD, edge cases, comparison queries. |
 
-### Deliverables
-```
-src/xaura/
-├── __init__.py
-├── profiler/
-│   ├── __init__.py
-│   ├── dataprofile.py      ✅
-│   └── profiler.py          ✅
-└── store/
-    ├── __init__.py
-    └── sqlite_store.py      ✅
-
-tests/
-├── conftest.py              ✅
-├── test_profiler.py         ✅
-└── test_store.py            ✅
-```
+### Week 1 Deliverables
+- `xaura.profile(df)` returns a complete `DataProfile`
+- `store.create_run()` / `get_run()` / `list_runs()` / `delete_run()` all work
+- CI is green
 
 ---
 
-## Week 2 — Model Infrastructure & Classifiers
+## Week 2 — All Models (Classifiers + Regressors + Clusterers)
 
 ### Goals
-- `BaseModel` and `Result` abstractions are solid
-- All 4 classifiers work with dataset-aware defaults
-- Every model run is auto-logged to SQLite
+- All 11 models work with dataset-aware defaults
+- Every run auto-logs to SQLite
+- Unified `run_model(name, data, profile)` dispatcher
 
 ### Person A
 
 | Task | Details |
 |---|---|
-| **BaseModel ABC** | `src/xaura/models/base.py` — abstract base with `fit()`, `predict()`, `evaluate()`. `Result` dataclass (metrics, plots, weights, run_id, config_used). |
-| **Model registry** | `src/xaura/models/registry.py` — `run_model(name, data, profile, config)` dispatcher. `list_models()` returns available models. |
-| **Logistic Regression** | `src/xaura/models/classifiers/logistic.py` — wraps scikit-learn, applies dataset-aware defaults. |
-| **Random Forest Classifier** | `src/xaura/models/classifiers/random_forest.py` — same pattern. |
-| **Tests** | Tests for both classifiers + integration test (profile → run → check result → verify SQLite entry). |
+| **BaseModel + Result** | `base.py` — abstract base with `fit()`, `predict()`, `evaluate()`. `Result` dataclass. |
+| **Model registry** | `registry.py` — `run_model()` dispatcher, `list_models()`. Auto-logging to SQLite after every run. |
+| **Logistic Regression** | `classifiers/logistic.py` |
+| **Random Forest Classifier** | `classifiers/random_forest.py` |
+| **Linear Regression** | `regressors/linear.py` |
+| **Ridge / Lasso** | `regressors/ridge_lasso.py` |
+| **K-Means** | `clusterers/kmeans.py` — includes elbow method for auto-k. |
+| **Tests** | Tests for all of A's models + profile → run → result integration test. |
 
 ### Person B
 
 | Task | Details |
 |---|---|
-| **Dataset-aware defaults engine** | `src/xaura/models/defaults.py` — reads DataProfile, computes config: regularisation strength, class weights, CV folds, metric selection, etc. |
-| **XGBoost Classifier** | `src/xaura/models/classifiers/xgboost_cls.py` — wraps XGBoost with auto class weights, scale_pos_weight from DataProfile. |
-| **LightGBM Classifier** | `src/xaura/models/classifiers/lightgbm_cls.py` — same pattern. |
-| **Auto-logging integration** | Wire up model runs to automatically call `store.create_run()` after every `run_model()`. |
-| **Tests** | Tests for both classifiers + defaults engine + auto-logging integration test. |
+| **Defaults engine** | `defaults.py` — reads DataProfile → computes model config (regularisation, class weights, CV folds, metric selection, early stopping). |
+| **XGBoost Classifier** | `classifiers/xgboost_cls.py` |
+| **LightGBM Classifier** | `classifiers/lightgbm_cls.py` |
+| **Random Forest Regressor** | `regressors/random_forest_reg.py` |
+| **XGBoost Regressor** | `regressors/xgboost_reg.py` |
+| **DBSCAN** | `clusterers/dbscan.py` — eps estimation from DataProfile. |
+| **Hierarchical Clustering** | `clusterers/hierarchical.py` — Agglomerative with dendrogram. |
+| **Tests** | Tests for all of B's models + defaults engine test. |
 
-### Deliverables
-```
-src/xaura/models/
-├── __init__.py
-├── base.py                  ✅
-├── registry.py              ✅
-├── defaults.py              ✅
-└── classifiers/
-    ├── __init__.py
-    ├── logistic.py           ✅
-    ├── random_forest.py      ✅
-    ├── xgboost_cls.py        ✅
-    └── lightgbm_cls.py       ✅
-
-tests/
-├── test_classifiers.py      ✅
-└── test_defaults.py         ✅
-```
+### Week 2 Deliverables
+- `run_model("rf_classifier", df, profile)` works for all 11 models
+- Dataset-aware defaults auto-computed
+- Every run auto-logged to SQLite
 
 ---
 
-## Week 3 — Regressors, Clusterers & Visualisation
+## Week 3 — Visualisation, Export & CLI
 
 ### Goals
-- All regressors and clusterers work
-- Plotly JSON chart generators produce interactive visualisations
-- Matplotlib generators produce export-quality static plots
+- Interactive Plotly charts for all model types
+- Static Matplotlib exports (PNG/PDF)
+- ZIP bundle + CSV log export
+- CLI fully functional
 
 ### Person A
 
 | Task | Details |
 |---|---|
-| **Linear Regression** | `src/xaura/models/regressors/linear.py` |
-| **Ridge / Lasso** | `src/xaura/models/regressors/ridge_lasso.py` — both models in one file, selected via config. |
-| **K-Means** | `src/xaura/models/clusterers/kmeans.py` — includes elbow method for auto-k selection. |
-| **DBSCAN** | `src/xaura/models/clusterers/dbscan.py` — eps estimation from DataProfile. |
-| **Plotly: Classification charts** | `src/xaura/visualisation/plotly_charts.py` — confusion matrix, ROC curve (per-class), Precision-Recall curve, feature importance bar chart. |
-| **Matplotlib: Classification charts** | `src/xaura/visualisation/matplotlib_charts.py` — static PNG/PDF versions of the same. |
-| **Tests** | Tests for A's models + classification visualisation output validation. |
+| **Plotly: Classification** | `plotly_charts.py` — confusion matrix heatmap, ROC curve (per-class), PR curve, feature importance bar chart. |
+| **Plotly: Common** | Dataset profile summary panel, metrics card, config panel (shared across all model types). |
+| **Matplotlib: Classification** | `matplotlib_charts.py` — static PNG/PDF versions of classification plots. |
+| **Export: ZIP bundle** | `exporter.py` — packages weights (joblib) + config (JSON) + metrics (JSON) + profile into ZIP. |
+| **CLI: `xaura profile`** | Profile a CSV, print summary to terminal. |
+| **CLI: `xaura run`** | Run a model with optional `--config` JSON. |
+| **Tests** | Chart output validation + export tests. |
 
 ### Person B
 
 | Task | Details |
 |---|---|
-| **Random Forest Regressor** | `src/xaura/models/regressors/random_forest_reg.py` |
-| **XGBoost Regressor** | `src/xaura/models/regressors/xgboost_reg.py` |
-| **Hierarchical Clustering** | `src/xaura/models/clusterers/hierarchical.py` — Agglomerative with dendrogram support. |
-| **Plotly: Regression charts** | Residuals vs fitted, Q-Q plot, predicted vs actual scatter, residual distribution histogram. |
-| **Plotly: Clustering charts** | Cluster scatter (PCA 2D projection), silhouette score plot, elbow curve, dendrogram. |
+| **Plotly: Regression** | Residuals vs fitted, Q-Q plot, predicted vs actual scatter, residual distribution histogram. |
+| **Plotly: Clustering** | Cluster scatter (PCA 2D), silhouette plot, elbow curve, dendrogram. |
 | **Matplotlib: Regression + Clustering** | Static versions for export. |
-| **Tests** | Tests for B's models + regression/clustering visualisation output validation. |
+| **Export: CSV log** | Export full experiment log as CSV. |
+| **Export: Plot export** | Export individual/all plots as PNG/PDF. |
+| **CLI: `xaura serve`** | Start FastAPI server. |
+| **CLI: `xaura export`** | Export run bundle by run_id. |
+| **Tests** | Regression/clustering vis tests + CLI smoke tests. |
 
-### Deliverables
-```
-src/xaura/models/
-├── regressors/
-│   ├── __init__.py
-│   ├── linear.py             ✅
-│   ├── ridge_lasso.py        ✅
-│   ├── random_forest_reg.py  ✅
-│   └── xgboost_reg.py        ✅
-└── clusterers/
-    ├── __init__.py
-    ├── kmeans.py              ✅
-    ├── dbscan.py              ✅
-    └── hierarchical.py        ✅
-
-src/xaura/visualisation/
-├── __init__.py
-├── plotly_charts.py           ✅
-└── matplotlib_charts.py       ✅
-```
+### Week 3 Deliverables
+- All Plotly charts generate valid JSON
+- `xaura profile data.csv` / `xaura run rf_classifier data.csv` / `xaura serve` all work
+- Export produces valid ZIP/CSV/PNG
 
 ---
 
-## Week 4 — Export, CLI & FastAPI Server
+## Week 4 — FastAPI Server & Web UI
 
 ### Goals
-- Export system works (ZIP bundles, CSV logs, PNG/PDF plots)
-- CLI commands are functional (`xaura profile`, `xaura run`, `xaura serve`, `xaura export`)
-- FastAPI server is up with all REST routes
+- Full web dashboard at `localhost:8000`
+- Upload → Profile → Run → View Results → Export flow works end-to-end
+- Experiment log with sorting, filtering, comparison
 
 ### Person A
 
 | Task | Details |
 |---|---|
-| **Export: ZIP bundle** | `src/xaura/export/exporter.py` — packages model weights (joblib), config (JSON), metrics (JSON), dataset profile into a ZIP. |
-| **Export: CSV log** | Export full SQLite experiment log as CSV. |
-| **CLI: `xaura profile`** | Profile a dataset from terminal, print summary. |
-| **CLI: `xaura run`** | Run a model from terminal with optional `--config` JSON override. |
-| **FastAPI: app.py** | Create the FastAPI application, mount static files, configure Jinja2. |
-| **FastAPI: profile routes** | `POST /api/profile` (upload CSV → return DataProfile JSON), `GET /api/profile/{id}`. |
-| **FastAPI: model routes** | `POST /api/run` (run a model → return Result JSON), `GET /api/models` (list available models). |
+| **FastAPI: app.py** | Application setup, Jinja2 config, static file mounting, CORS. |
+| **Profile routes** | `POST /api/profile` (upload CSV → DataProfile), `GET /api/profile/{id}`. |
+| **Model routes** | `POST /api/run`, `GET /api/models`. |
+| **`base.html`** | Jinja2 base: nav bar, footer, CDN imports (Plotly.js), CSS/JS includes. |
+| **`index.html`** | Landing page: drag-and-drop CSV upload, project description. |
+| **`profile.html`** | Profile view: stats table, feature types, missing heatmap, correlation matrix, warnings. |
+| **`app.js`** | File upload (FormData → fetch), navigation, loading spinners. |
+| **`plots.js`** | Receives Plotly JSON from API, renders into DOM containers. |
 
 ### Person B
 
 | Task | Details |
 |---|---|
-| **Export: PNG/PDF plots** | Export individual or all plots as PNG/PDF from a Result object. |
-| **Experiment comparison** | `store.get_metrics_comparison(run_ids)` — side-by-side metrics comparison for multiple runs. |
-| **CLI: `xaura serve`** | Start the FastAPI dev server. |
-| **CLI: `xaura export`** | Export a run bundle by run_id. |
-| **FastAPI: experiment routes** | `GET /api/experiments` (list runs, filterable), `GET /api/experiments/{run_id}`, `DELETE /api/experiments/{run_id}`, `GET /api/experiments/compare?ids=...`. |
-| **FastAPI: export routes** | `GET /api/export/{run_id}/zip`, `GET /api/export/{run_id}/plots`, `GET /api/export/log/csv`. |
-| **Tests** | API endpoint tests using `httpx` + FastAPI TestClient. |
+| **Experiment routes** | `GET /api/experiments`, `GET /api/experiments/{id}`, `DELETE`, `GET /api/experiments/compare`. |
+| **Export routes** | `GET /api/export/{id}/zip`, `GET /api/export/{id}/plots`, `GET /api/export/log/csv`. |
+| **`run.html`** | Model runner: model dropdown, config editor, run button, results panel (metrics + plots). |
+| **`experiments.html`** | Experiment log: sortable table, search, click-to-expand, side-by-side diff, delete. |
+| **`experiments.js`** | Table rendering, sorting, filtering, comparison, export buttons. |
+| **`style.css`** | Full stylesheet — pair program with Person A. Dark mode, clean, functional. |
+| **API tests** | `test_api.py` — all endpoints tested via httpx TestClient. |
 
-### Deliverables
-```
-src/xaura/
-├── cli.py                     ✅
-├── export/
-│   ├── __init__.py
-│   └── exporter.py            ✅
-└── server/
-    ├── __init__.py
-    ├── app.py                 ✅
-    └── routes/
-        ├── __init__.py
-        ├── profile_routes.py  ✅
-        ├── model_routes.py    ✅
-        ├── experiment_routes.py ✅
-        └── export_routes.py   ✅
-
-tests/
-├── test_export.py             ✅
-└── test_api.py                ✅
-```
+### Week 4 Deliverables
+- `xaura serve` → open `localhost:8000` → full working dashboard
+- Upload CSV → see profile → run model → view plots/metrics → export
+- Experiment history with comparison
 
 ---
 
-## Week 5 — Web UI (Frontend)
+## Week 5 — Agent Core & Chat UI
 
 ### Goals
-- Fully functional browser UI at `localhost:8000`
-- Users can upload data, view profiles, run models, see results, browse experiment history
-- All plots render interactively via Plotly.js
+- Agent engine orchestrates Phase 1 functions via natural language
+- Multi-source data ingestion (file, URL, DB)
+- Model recommendation from DataProfile
+- Chat UI with WebSocket for real-time conversation
 
 ### Person A
 
 | Task | Details |
 |---|---|
-| **`base.html`** | Jinja2 base template: navigation bar, footer, Plotly.js CDN, CSS/JS includes. |
-| **`index.html`** | Landing page with drag-and-drop CSV upload, project description. |
-| **`profile.html`** | Dataset profile view: stats table, feature type breakdown, missing values heatmap, correlation matrix, warnings panel. |
-| **`app.js`** | File upload handler (FormData → fetch to `/api/profile`), navigation logic, loading states. |
-| **`plots.js`** | Plotly rendering: receives plot JSON from API, renders into DOM containers. |
-| **`style.css` (shared)** | Pair-program with Person B on the full stylesheet. Clean, dark-mode, functional design. |
+| **LLM client** | `agent/llm_client.py` — unified wrapper for Gemini API and OpenAI API. Switchable via config/env var. Handles API keys, rate limiting, retries. |
+| **Prompt templates** | `agent/prompts.py` — system prompt (defines agent personality, capabilities, constraints), profiling prompt, recommendation prompt, explanation prompt, tuning prompt. |
+| **Agent engine** | `agent/engine.py` — core orchestrator. Receives user message → parses intent → calls appropriate Phase 1 function → formats response. Maintains tool-calling loop. |
+| **Session manager** | `agent/session.py` — conversation history per session. Store in SQLite (new table). Load/save/list sessions. |
+| **Chat UI template** | `templates/chat.html` — chat interface with message bubbles, input box, send button, session selector. |
+| **Chat JS** | `static/js/chat.js` — WebSocket connection, message rendering, auto-scroll, typing indicator. |
 
 ### Person B
 
 | Task | Details |
 |---|---|
-| **`run.html`** | Model runner page: model selector dropdown, config editor (JSON), run button, results panel (metrics card + plots). |
-| **`experiments.html`** | Experiment log table: sortable columns, search/filter, click-to-expand run details, side-by-side comparison view, delete button. |
-| **`experiments.js`** | Table rendering, sorting, filtering, run comparison logic, export buttons. |
-| **`style.css` (shared)** | Pair-program with Person A. |
-| **Responsive design** | Ensure all pages work on tablet/desktop widths. |
+| **Data ingestion** | `agent/ingestion.py` — load from: local file path (CSV/Excel/Parquet/JSON with auto-detection), URL (HTTP download + detect type), database connection string (SQLAlchemy: SQLite/PostgreSQL/MySQL → SELECT → DataFrame). Validates and confirms what was loaded. |
+| **Model recommender** | `agent/recommender.py` — rule-based layer: reads DataProfile → ranks models by suitability. Rules: imbalanced → XGBoost/LightGBM; small + few features → Logistic; many features → Ridge/Lasso; no target → clustering. LLM layer: generates one-line rationale per recommendation. |
+| **Agent routes** | `server/routes/agent_routes.py` — `WebSocket /ws/chat` (real-time conversation), `POST /api/agent/ingest` (data ingestion), `GET /api/agent/sessions` (list sessions), `GET /api/agent/sessions/{id}` (load session). |
+| **Nav integration** | Update `base.html` to add "Chat" link in nav bar. Ensure smooth navigation between dashboard and chat. |
+| **Tests** | `test_ingestion.py` — file/URL/DB ingestion with mocked sources. |
 
-### Deliverables
-```
-src/xaura/server/
-├── templates/
-│   ├── base.html              ✅
-│   ├── index.html             ✅
-│   ├── profile.html           ✅
-│   ├── run.html               ✅
-│   └── experiments.html       ✅
-└── static/
-    ├── css/
-    │   └── style.css          ✅
-    └── js/
-        ├── app.js             ✅
-        ├── plots.js           ✅
-        └── experiments.js     ✅
-```
+### Week 5 Deliverables
+- Agent can: accept data from file/URL/DB, profile it, recommend models
+- Chat UI works via WebSocket at `/chat`
+- Conversation history persisted per session
 
 ---
 
-## Week 6 — Integration Testing, Docs & Release Prep
+## Week 6 — Agent Intelligence, Polish & Release
 
 ### Goals
-- Full end-to-end flow tested
-- Edge cases handled gracefully
+- Agent explains results in plain language
+- Agent suggests hyperparameters based on run analysis
+- Full end-to-end agent flow tested
+- Documentation complete, package ready for release
+
+### Person A
+
+| Task | Details |
+|---|---|
+| **Result explainer** | `agent/explainer.py` — after a model run, generates plain-language interpretation. Rule layer: identifies key patterns (overfitting, underfitting, class confusion, high/low recall). LLM layer: turns patterns into natural language + suggests next steps. |
+| **Hyperparameter tuner** | `agent/tuner.py` — after first run, analyses metrics + DataProfile → suggests 2-3 hyperparameter configs with rationale. Rules: train/val gap → more regularisation; slow convergence → lower LR; class confusion → adjust threshold/weights. LLM: generates Config A/B/C with explanations. |
+| **Agent conversation flow** | Full end-to-end: user provides data → agent profiles → recommends model → user picks → agent runs → explains results → suggests hyperparams → user picks → agent re-runs → compares. |
+| **End-to-end tests** | `test_e2e.py` — full flow from data upload through agent conversation to export. |
+| **README final** | Final README polish: add agent section, chat UI screenshot, full feature list. |
+
+### Person B
+
+| Task | Details |
+|---|---|
+| **Agent multi-run comparison** | Agent can compare multiple runs and explain which performed better and why. |
+| **Error handling & guardrails** | Agent gracefully handles: invalid data, unsupported model names, API failures, empty datasets. Never exposes raw errors to user. |
+| **Edge case tests** | `test_agent.py` — malformed inputs, API timeout mocking, conversation with ambiguous requests, session persistence across restarts. |
+| **User guide** | `docs/user_guide.md` — tutorial covering both dashboard and agent workflows. |
+| **Contributing guide** | `CONTRIBUTING.md` — how to add models, how to modify prompts, coding standards. |
+| **CI/CD final** | All tests pass in CI. Add coverage badge. Verify `pip install` works from clean environment. |
+
+### Week 6 Deliverables
+- Agent explains results: *"Your RF achieved 89% accuracy but recall on minority class is only 67%..."*
+- Agent suggests hyperparams: *"Config A — dropout: 0.4, weight_decay: 1e-4. Rationale: stronger regularisation..."*
+- Full conversation flow works
 - Documentation complete
 - Package installable via `pip install`
 
-### Person A
+---
 
-| Task | Details |
-|---|---|
-| **End-to-end tests** | Test complete flow: upload CSV → profile → select model → run → view results → export. Use multiple sample datasets (Iris, Boston, synthetic). |
-| **Error handling** | Graceful handling of: malformed CSV, empty datasets, single-column data, all-NaN columns, unsupported file types. |
-| **API documentation** | Comprehensive docstrings on all public functions. Usage examples in docstrings. |
-| **README final polish** | Badges, GIFs/screenshots of UI, installation verification. |
+## Agent Conversation Flow (Week 5–6)
 
-### Person B
-
-| Task | Details |
-|---|---|
-| **Edge case tests** | Large files (100k+ rows), datasets with only categoricals, datasets with 50%+ missing, single-class target, highly imbalanced (100:1). |
-| **Input validation** | Add validation to all API endpoints and model functions. Clear error messages. |
-| **User guide** | `docs/user_guide.md` — tutorial walkthrough with a sample dataset, step-by-step. |
-| **Contributing guide** | `CONTRIBUTING.md` — how to add a new model, coding standards, PR process. |
-| **CI/CD finalization** | Ensure all tests pass in CI. Add badge to README. |
-
-### Deliverables
 ```
-docs/
-├── user_guide.md              ✅
-└── CONTRIBUTING.md            ✅
-
-tests/
-├── test_e2e.py                ✅
-├── test_edge_cases.py         ✅
-└── test_validation.py         ✅
+User: "I have a dataset at /home/user/sales.csv"
+  │
+  ▼
+Agent: [calls ingestion.load("/home/user/sales.csv")]
+Agent: "Loaded sales.csv — 8,400 rows, 12 columns. Running profiling..."
+  │
+  ▼
+Agent: [calls profile(df)]
+Agent: "Here's your data profile:
+        • 12 numeric features, binary target
+        • Class imbalance: 3.2:1
+        • No missing values
+        • 2 high-correlation pairs flagged"
+  │
+  ▼
+Agent: [calls recommender.recommend(profile)]
+Agent: "Based on this profile, recommended models:
+        1. XGBoost — handles imbalance well, strong on tabular data
+        2. Random Forest — good baseline, interpretable
+        3. Logistic Regression — fast, interpretable for low feature count
+        Which would you like to run?"
+  │
+  ▼
+User: "Run XGBoost"
+  │
+  ▼
+Agent: [calls run_model("xgb_classifier", df, profile)]
+Agent: [calls explainer.explain(result, profile)]
+Agent: "Your XGBoost achieved 89.4% accuracy and F1 of 0.83.
+        However, minority class recall is only 67% — the model
+        misses 1 in 3 positive cases.
+        
+        Suggested next steps:
+        • Try a lower classification threshold
+        • Increase scale_pos_weight
+        • Consider SMOTE oversampling"
+  │
+  ▼
+Agent: [calls tuner.suggest(result, profile)]
+Agent: "Based on the train/val gap, here are 3 configs to try:
+        Config A — n_estimators: 500, max_depth: 4, scale_pos_weight: 5
+        Config B — n_estimators: 300, max_depth: 6, learning_rate: 0.01
+        Config C — n_estimators: 400, max_depth: 5, subsample: 0.8
+        Run all three?"
+  │
+  ▼
+User: "Yes, run all"
+  │
+  ▼
+Agent: [runs all 3, compares results]
+Agent: "Config B performed best — F1: 0.88, minority recall: 78%.
+        All 3 runs are logged. View comparison in the experiments tab."
 ```
 
 ---
@@ -330,10 +488,10 @@ tests/
 
 | Activity | When | Details |
 |---|---|---|
-| **Code Review** | End of each week | Both review each other's PRs — this is how you learn code you didn't write |
+| **Code Review** | End of each week | Both review each other's PRs |
 | **Cross-Testing** | End of each week | Each person writes 1-2 tests for the other's code |
 | **Demo** | Friday | Both demo their week's work, explain design decisions |
-| **Retro** | Friday | Quick check: what went well, what's blocking, what to adjust |
+| **Retro** | Friday | What went well, what's blocking, what to adjust |
 
 ---
 
@@ -352,19 +510,22 @@ tests/
 
 | Risk | Mitigation |
 |---|---|
-| XGBoost/LightGBM install issues | Pin specific versions in `pyproject.toml`, test in CI across OS |
-| Plotly charts too complex | Start with basic charts, enhance interactivity iteratively |
-| Scope creep | Strictly follow this plan. New ideas go to a `BACKLOG.md` file |
-| One person blocked | Both know enough of each layer to help — that's why work is cross-cutting |
-| SQLite concurrency | Single-user local use, not a concern for Phase 1 |
+| LLM API costs during development | Use Gemini Flash (free tier) for dev, switch to Pro for release |
+| LLM API latency | Show typing indicator, stream responses via WebSocket |
+| XGBoost/LightGBM install issues | Pin versions, test in CI across OS |
+| Scope creep | New ideas go to `BACKLOG.md`, not into the sprint |
+| One person blocked | Both know enough of each layer to help |
+| Agent hallucinating bad advice | Rule-based layer validates before LLM generates text |
+| API key security | Use env vars, never commit keys, add `.env` to `.gitignore` |
 
 ---
 
-## Post-Phase 1: What Comes Next
+## Post-6-Weeks: Future Enhancements
 
-After the 6-week MVP is complete and stable:
+After the 6-week build is complete:
 
-- **Phase 1.5** — Add MLP (via scikit-learn) as a lightweight neural net option
-- **Phase 2** — Agentic layer (LLM-backed chatbot, model recommendation, hyperparameter suggestions)
-- **Phase 3** — Desktop packaging (.exe, .dmg, AppImage)
-- **Phase 4** — GPU models (PyTorch/TensorFlow: CNN, LSTM, Transformers)
+- **v1.1** — Add MLP (scikit-learn) as a CPU neural net option
+- **v1.2** — Agent memory — remembers user preferences across sessions
+- **v2.0** — GPU models (PyTorch/TensorFlow: CNN, LSTM, Transformers)
+- **v3.0** — Desktop packaging (.exe, .dmg, AppImage) — Ollama-style distribution
+- **v4.0** — Multi-user support, cloud deployment option
