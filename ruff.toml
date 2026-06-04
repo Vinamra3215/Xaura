@@ -1,0 +1,35 @@
+# Ruff configuration for XAURA
+# https://docs.astral.sh/ruff/configuration/
+
+# Target Python 3.10+
+target-version = "py310"
+
+# Line length to match Black
+line-length = 88
+
+# Source directories
+src = ["src"]
+
+[lint]
+# Enable common rule sets
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long — handled by black/ruff-format
+]
+
+[lint.isort]
+known-first-party = ["xaura"]
+
+[format]
+# Use double quotes to match Black
+quote-style = "double"
+indent-style = "space"

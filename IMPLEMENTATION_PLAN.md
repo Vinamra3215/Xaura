@@ -459,7 +459,7 @@ Agent: [calls explainer.explain(result, profile)]
 Agent: "Your XGBoost achieved 89.4% accuracy and F1 of 0.83.
         However, minority class recall is only 67% — the model
         misses 1 in 3 positive cases.
-        
+
         Suggested next steps:
         • Try a lower classification threshold
         • Increase scale_pos_weight
