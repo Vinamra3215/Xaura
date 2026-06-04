@@ -1,12 +1,12 @@
 """CLI entry point for XAURA."""
 
-# import click
+import click
 
 
-# @click.group()
-# def main():
-#     """XAURA — eXtendable Automated Unified Research & Analytics."""
-#     pass
+@click.group()
+def main():
+    """XAURA — eXtendable Automated Unified Research & Analytics."""
+    pass
 
 
 # Commands will be added in Week 3:
