@@ -2,31 +2,33 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   python-ci:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: ${{ matrix.python-version }}
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest flake8
+          pip install -e ".[dev]"
 
-      - name: Lint with flake8 (Syntax Check)
-        run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: Lint with ruff
+        run: ruff check src/
 
       - name: Run Tests with pytest
-        run: |
-          pytest
+        run: pytest tests/ -v --cov=src/xaura --cov-report=term-missing

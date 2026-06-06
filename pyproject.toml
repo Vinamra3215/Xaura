@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xaura"
+version = "0.1.0"
+description = "eXtendable Automated Unified Research & Analytics — an intelligent AI library"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Vinamra"},
+]
+
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "scikit-learn>=1.3",
+    "xgboost>=2.0",
+    "lightgbm>=4.0",
+    "matplotlib>=3.7",
+    "seaborn>=0.13",
+    "plotly>=5.15",
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.23",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.6",
+    "joblib>=1.3",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.1",
+    "black>=23.0",
+    "httpx>=0.25",
+    "pre-commit>=3.5",
+]
+agent = [
+    "google-generativeai>=0.3",
+    "openai>=1.0",
+    "sqlalchemy>=2.0",
+    "requests>=2.31",
+]
+
+[project.scripts]
+xaura = "xaura.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"

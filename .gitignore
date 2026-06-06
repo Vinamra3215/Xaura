@@ -30,6 +30,7 @@ Desktop.ini
 *.db
 xaura_experiments.db
 .env
+*.zip
 
 # Coverage reports
 htmlcov/
