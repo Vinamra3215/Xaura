@@ -103,11 +103,12 @@ def _detect_feature_types(df: pd.DataFrame) -> dict[str, list[str]]:
         "text": [],
     }
 
-    for col in df.columns:
-        n_unique = df[col].nunique()
+    for i, col in enumerate(df.columns):
+        series = df.iloc[:, i]
+        n_unique = series.nunique()
 
         # Datetime
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
+        if pd.api.types.is_datetime64_any_dtype(series):
             types["datetime"].append(str(col))
             continue
 
@@ -117,7 +118,7 @@ def _detect_feature_types(df: pd.DataFrame) -> dict[str, list[str]]:
             continue
 
         # Numeric
-        if pd.api.types.is_numeric_dtype(df[col]):
+        if pd.api.types.is_numeric_dtype(series):
             # Low-cardinality numeric -> treat as categorical
             if n_unique <= 20 and len(df) > 0 and (n_unique / len(df)) < 0.05:
                 types["categorical"].append(str(col))
@@ -126,9 +127,9 @@ def _detect_feature_types(df: pd.DataFrame) -> dict[str, list[str]]:
             continue
 
         # String / object
-        if pd.api.types.is_string_dtype(df[col]) or pd.api.types.is_object_dtype(df[col]):
+        if pd.api.types.is_string_dtype(series) or pd.api.types.is_object_dtype(series):
             # Text detection (long strings)
-            avg_len = df[col].dropna().astype(str).str.len().mean()
+            avg_len = series.dropna().astype(str).str.len().mean()
             if not np.isnan(avg_len) and avg_len > 50:
                 types["text"].append(str(col))
             else:
@@ -153,12 +154,20 @@ def _compute_basic_stats(df: pd.DataFrame) -> pd.DataFrame:
     if not numeric_cols:
         return pd.DataFrame()
 
+    # Use iloc to handle duplicate column names safely
+    numeric_indices = [
+        i for i, dtype in enumerate(df.dtypes) if np.issubdtype(dtype, np.number)
+    ]
+
     stats_data = {}
-    for col in numeric_cols:
-        col_data = df[col].dropna()
+    for idx in numeric_indices:
+        col_name = str(df.columns[idx])
+        col_data = df.iloc[:, idx].dropna()
         if len(col_data) == 0:
             continue
-        stats_data[col] = {
+        # If duplicate col names, make keys unique
+        key = col_name if col_name not in stats_data else f"{col_name}_{idx}"
+        stats_data[key] = {
             "mean": float(col_data.mean()),
             "std": float(col_data.std()),
             "min": float(col_data.min()),
