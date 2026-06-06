@@ -5,7 +5,7 @@
 target-version = "py310"
 
 # Line length to match Black
-line-length = 88
+line-length = 100
 
 # Source directories
 src = ["src"]
