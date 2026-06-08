@@ -9,7 +9,6 @@ import pytest
 from xaura import profile
 from xaura.profiler import DataProfile
 
-
 # ---------------------------------------------------------------------------
 # profile() function basics
 # ---------------------------------------------------------------------------
@@ -86,20 +85,25 @@ class TestFeatureTypeDetection:
             assert key in result.feature_types
 
     def test_datetime_detection(self):
-        df = pd.DataFrame({
-            "date": pd.date_range("2024-01-01", periods=50),
-            "value": np.random.randn(50),
-        })
+        df = pd.DataFrame(
+            {
+                "date": pd.date_range("2024-01-01", periods=50),
+                "value": np.random.randn(50),
+            }
+        )
         result = profile(df)
         assert "date" in result.feature_types["datetime"]
 
     def test_text_detection(self):
-        df = pd.DataFrame({
-            "long_text": [
-                "This is a very long text string that exceeds fifty characters easily. " * 2
-            ] * 50,
-            "short_cat": ["A", "B", "C", "D", "E"] * 10,
-        })
+        df = pd.DataFrame(
+            {
+                "long_text": [
+                    "This is a very long text string that exceeds fifty characters easily. " * 2
+                ]
+                * 50,
+                "short_cat": ["A", "B", "C", "D", "E"] * 10,
+            }
+        )
         result = profile(df)
         assert "long_text" in result.feature_types["text"]
         assert "short_cat" in result.feature_types["categorical"]
@@ -137,10 +141,12 @@ class TestBasicStats:
         assert 0.5 < result.basic_stats.loc["x1", "std"] < 2.0
 
     def test_no_numeric_columns(self):
-        df = pd.DataFrame({
-            "cat1": ["a", "b", "c"] * 20,
-            "cat2": ["x", "y", "z"] * 20,
-        })
+        df = pd.DataFrame(
+            {
+                "cat1": ["a", "b", "c"] * 20,
+                "cat2": ["x", "y", "z"] * 20,
+            }
+        )
         result = profile(df)
         assert result.basic_stats is not None
         assert result.basic_stats.empty
@@ -236,8 +242,11 @@ class TestDataProfileProperties:
         dp = DataProfile(
             shape=(100, 5),
             feature_types={
-                "numeric": [], "categorical": [], "binary": [],
-                "datetime": [], "text": [],
+                "numeric": [],
+                "categorical": [],
+                "binary": [],
+                "datetime": [],
+                "text": [],
             },
             warnings=["High imbalance: 3.2:1"],
         )
@@ -264,10 +273,12 @@ class TestEdgeCases:
         assert result.n_rows == 1
 
     def test_all_nan_column(self):
-        df = pd.DataFrame({
-            "good": [1.0, 2.0, 3.0],
-            "bad": [np.nan, np.nan, np.nan],
-        })
+        df = pd.DataFrame(
+            {
+                "good": [1.0, 2.0, 3.0],
+                "bad": [np.nan, np.nan, np.nan],
+            }
+        )
         result = profile(df)
         assert result.n_cols == 2
 
