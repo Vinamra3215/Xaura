@@ -1,26 +1,194 @@
-"""XAURA Profiler — dataset analysis and profiling engine.
+"""Core profiling function — analyses a dataset and returns a DataProfile.
 
 This module contains:
 - profile(): The main entry point that analyses a DataFrame end-to-end.
-- Helper functions for class balance, correlation, missing values,
-  target detection, and task type inference.
-
-Person A built: DataProfile dataclass (dataprofile.py)
-Person B built: This file — all the analysis logic that fills the DataProfile.
+- Data loading and validation (Person A)
+- Feature type detection and basic statistics (Person A)
+- Class balance, correlation, missing values, target detection,
+  task type inference, and warning generation (Person B)
 """
 
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy import stats as scipy_stats
 
 from xaura.profiler.dataprofile import DataProfile
 
 # ─────────────────────────────────────────────────────────────
-# 1. CLASS BALANCE DETECTION
+# DATA LOADING & VALIDATION (Person A)
+# ─────────────────────────────────────────────────────────────
+
+
+def _load_data(data: pd.DataFrame | str | Path | np.ndarray) -> pd.DataFrame:
+    """Convert input to a pandas DataFrame.
+
+    Supports:
+        - pd.DataFrame (returned as-is)
+        - np.ndarray (wrapped in DataFrame)
+        - str or Path to .csv, .xlsx, .xls, .parquet, .json
+    """
+    if isinstance(data, pd.DataFrame):
+        return data
+
+    if isinstance(data, np.ndarray):
+        return pd.DataFrame(data)
+
+    if isinstance(data, str | Path):
+        path = Path(data)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {path}")
+
+        suffix = path.suffix.lower()
+        if suffix == ".csv":
+            return pd.read_csv(path)
+        elif suffix in (".xls", ".xlsx"):
+            return pd.read_excel(path)
+        elif suffix == ".parquet":
+            return pd.read_parquet(path)
+        elif suffix == ".json":
+            return pd.read_json(path)
+        else:
+            raise ValueError(f"Unsupported file format: {suffix}")
+
+    raise TypeError(f"Expected DataFrame, path, or ndarray, got {type(data).__name__}")
+
+
+def _validate(df: pd.DataFrame) -> None:
+    """Validate that the DataFrame is usable for profiling."""
+    if df.empty:
+        raise ValueError("Dataset is empty (0 rows or 0 columns)")
+    if df.shape[0] == 0:
+        raise ValueError("Dataset has 0 rows")
+    if df.shape[1] == 0:
+        raise ValueError("Dataset has 0 columns")
+
+
+# ─────────────────────────────────────────────────────────────
+# FEATURE TYPE DETECTION (Person A)
+# ─────────────────────────────────────────────────────────────
+
+
+def _detect_feature_types(df: pd.DataFrame) -> dict[str, list[str]]:
+    """Classify each column into a feature type.
+
+    Types:
+        - numeric: int or float columns with > 2 unique values
+        - binary: columns with exactly 2 unique non-null values
+        - categorical: object/string columns, or low-cardinality int/float
+        - datetime: datetime columns
+        - text: string columns where average length > 50 characters
+    """
+    types: dict[str, list[str]] = {
+        "numeric": [],
+        "categorical": [],
+        "binary": [],
+        "datetime": [],
+        "text": [],
+    }
+
+    for i, col in enumerate(df.columns):
+        series = df.iloc[:, i]
+        n_unique = series.nunique()
+
+        # Datetime
+        if pd.api.types.is_datetime64_any_dtype(series):
+            types["datetime"].append(str(col))
+            continue
+
+        # Binary (exactly 2 unique non-null values, any dtype)
+        if n_unique == 2:
+            types["binary"].append(str(col))
+            continue
+
+        # Numeric
+        if pd.api.types.is_numeric_dtype(series):
+            # Low-cardinality numeric -> treat as categorical
+            if n_unique <= 20 and len(df) > 0 and (n_unique / len(df)) < 0.05:
+                types["categorical"].append(str(col))
+            else:
+                types["numeric"].append(str(col))
+            continue
+
+        # String / object
+        if pd.api.types.is_string_dtype(series) or pd.api.types.is_object_dtype(series):
+            # Text detection (long strings)
+            avg_len = series.dropna().astype(str).str.len().mean()
+            if not np.isnan(avg_len) and avg_len > 50:
+                types["text"].append(str(col))
+            else:
+                types["categorical"].append(str(col))
+            continue
+
+        # Fallback — treat as categorical
+        types["categorical"].append(str(col))
+
+    return types
+
+
+# ─────────────────────────────────────────────────────────────
+# BASIC STATISTICS (Person A)
+# ─────────────────────────────────────────────────────────────
+
+
+def _compute_basic_stats(df: pd.DataFrame) -> pd.DataFrame:
+    """Compute basic statistics for numeric columns.
+
+    Returns a DataFrame with columns: mean, std, min, max, median, skew.
+    Each row corresponds to a numeric column from the input DataFrame.
+    Returns an empty DataFrame if there are no numeric columns.
+    """
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+
+    if not numeric_cols:
+        return pd.DataFrame()
+
+    # Use iloc to handle duplicate column names safely
+    numeric_indices = [
+        i for i, dtype in enumerate(df.dtypes) if pd.api.types.is_numeric_dtype(dtype)
+    ]
+
+    stats_data = {}
+    for idx in numeric_indices:
+        col_name = str(df.columns[idx])
+        col_data = df.iloc[:, idx].dropna()
+        if len(col_data) == 0:
+            continue
+        # If duplicate col names, make keys unique
+        key = col_name if col_name not in stats_data else f"{col_name}_{idx}"
+        stats_data[key] = {
+            "mean": float(col_data.mean()),
+            "std": float(col_data.std()),
+            "min": float(col_data.min()),
+            "max": float(col_data.max()),
+            "median": float(col_data.median()),
+            "skew": float(scipy_stats.skew(col_data, nan_policy="omit")),
+        }
+
+    return pd.DataFrame(stats_data).T
+
+
+# ─────────────────────────────────────────────────────────────
+# DATASET HASHING (Person A)
+# ─────────────────────────────────────────────────────────────
+
+
+def _compute_hash(df: pd.DataFrame) -> str:
+    """Compute a SHA-256 hash of the DataFrame for reproducibility.
+
+    Uses pandas object hashing to generate a deterministic fingerprint
+    of the dataset contents.
+    """
+    return hashlib.sha256(pd.util.hash_pandas_object(df).values.tobytes()).hexdigest()
+
+
+# ─────────────────────────────────────────────────────────────
+# CLASS BALANCE DETECTION (Person B)
 # ─────────────────────────────────────────────────────────────
 
 
@@ -37,11 +205,7 @@ def _analyse_class_balance(df: pd.DataFrame, target_col: str | None) -> dict[str
         target_col: Name of the target column, or None.
 
     Returns:
-        Dict with:
-            - counts: {class_label: count} for each unique value
-            - ratio: majority_count / minority_count (e.g. 5.0 means 5:1)
-            - majority_class: the label of the most common class
-            - minority_class: the label of the least common class
+        Dict with counts, ratio, majority/minority class info.
         Returns None if no target column or target is continuous.
     """
     if target_col is None or target_col not in df.columns:
@@ -50,7 +214,6 @@ def _analyse_class_balance(df: pd.DataFrame, target_col: str | None) -> dict[str
     series = df[target_col].dropna()
 
     # Only analyse if it looks like a classification target
-    # (categorical, or numeric with few unique values)
     n_unique = series.nunique()
     if n_unique > 20 or n_unique < 2:
         return None
@@ -69,7 +232,7 @@ def _analyse_class_balance(df: pd.DataFrame, target_col: str | None) -> dict[str
 
 
 # ─────────────────────────────────────────────────────────────
-# 2. CORRELATION ANALYSIS
+# CORRELATION ANALYSIS (Person B)
 # ─────────────────────────────────────────────────────────────
 
 
@@ -77,12 +240,9 @@ def _compute_correlations(df: pd.DataFrame) -> pd.DataFrame | None:
     """Compute Pearson correlation matrix for all numeric columns.
 
     Pearson correlation (r) measures LINEAR relationship between two variables:
-        r = +1  → perfect positive correlation (both go up together)
-        r = -1  → perfect negative correlation (one goes up, other goes down)
+        r = +1  → perfect positive correlation
+        r = -1  → perfect negative correlation
         r =  0  → no linear relationship
-
-    We compute this for ALL pairs of numeric columns so we can detect
-    redundant features (high correlation) that might hurt model performance.
 
     Args:
         df: The dataset.
@@ -103,12 +263,9 @@ def _find_high_correlations(
 ) -> list[tuple[str, str, float]]:
     """Find feature pairs with correlation above the threshold.
 
-    Why |r| > 0.85 matters:
     If two features are highly correlated, they carry almost the same
-    information. Including both can:
-    - Slow down training
-    - Make feature importance unreliable
-    - Cause multicollinearity in linear models (unstable coefficients)
+    information. Including both can slow down training and make feature
+    importance unreliable.
 
     Args:
         corr_matrix: Correlation matrix from _compute_correlations.
@@ -130,35 +287,28 @@ def _find_high_correlations(
             if abs(r) >= threshold:
                 flagged.append((cols[i], cols[j], round(r, 4)))
 
-    # Sort by absolute correlation (highest first)
     flagged.sort(key=lambda x: abs(x[2]), reverse=True)
     return flagged
 
 
 # ─────────────────────────────────────────────────────────────
-# 3. MISSING VALUE ANALYSIS
+# MISSING VALUE ANALYSIS (Person B)
 # ─────────────────────────────────────────────────────────────
 
 
 def _analyse_missing_values(df: pd.DataFrame) -> dict[str, int]:
     """Count missing values per column.
 
-    Missing values (NaN, None, NaT) are problematic because:
-    - Most ML models can't handle them directly
-    - They might indicate data quality issues
-    - The PATTERN of missingness can itself be informative
-
-    We count per-column so the user knows exactly where the gaps are.
+    Missing values (NaN, None, NaT) are problematic because most ML models
+    can't handle them directly.
 
     Args:
         df: The dataset.
 
     Returns:
         Dict of {column_name: missing_count} for columns with missing values.
-        Columns with zero missing are excluded to keep it clean.
     """
     missing = df.isnull().sum()
-    # Only include columns that actually have missing values
     return {col: int(count) for col, count in missing.items() if count > 0}
 
 
@@ -166,10 +316,9 @@ def _classify_missing_severity(missing_counts: dict[str, int], n_rows: int) -> d
     """Classify each column's missing data severity.
 
     Categories:
-        - no_missing: 0%
-        - low: < 5% — usually safe to impute (fill in with mean/median)
-        - moderate: 5-30% — imputation works but consider investigating WHY
-        - high: > 30% — might be better to drop the column entirely
+        - low: < 5% — usually safe to impute
+        - moderate: 5-30% — imputation works but investigate WHY
+        - high: > 30% — might be better to drop the column
 
     Args:
         missing_counts: {column: missing_count} dict.
@@ -196,9 +345,8 @@ def _classify_missing_severity(missing_counts: dict[str, int], n_rows: int) -> d
 
 
 # ─────────────────────────────────────────────────────────────
-# 4. TARGET COLUMN DETECTION & TASK TYPE INFERENCE
+# TARGET COLUMN DETECTION & TASK TYPE INFERENCE (Person B)
 # ─────────────────────────────────────────────────────────────
-
 
 # Common names people use for target columns
 _TARGET_NAMES = {
@@ -214,19 +362,12 @@ _TARGET_NAMES = {
 
 
 def _detect_target_column(df: pd.DataFrame) -> str | None:
-    """Auto-detect which column is likely the target (what we want to predict).
+    """Auto-detect which column is likely the target.
 
     Uses a priority-based heuristic:
-
-    1. EXACT NAME MATCH — If a column is named 'target', 'label', 'class',
-       'y', or 'output' (case-insensitive), that's almost certainly the target.
-       This is the most reliable signal.
-
-    2. LAST COLUMN — By convention in many datasets (especially from Kaggle,
-       UCI, etc.), the target is the last column. We use this as a fallback.
-
-    3. Returns None if nothing looks like a target (suggesting unsupervised/
-       clustering task).
+    1. EXACT NAME MATCH — column named 'target', 'label', 'class', 'y', etc.
+    2. LAST COLUMN — by convention in many datasets (Kaggle, UCI, etc.)
+    3. None — if nothing looks like a target (unsupervised task).
 
     Args:
         df: The dataset.
@@ -239,18 +380,15 @@ def _detect_target_column(df: pd.DataFrame) -> str | None:
 
     # Priority 1: Check for common target column names
     for col in df.columns:
-        if col.strip().lower() in _TARGET_NAMES:
+        if str(col).strip().lower() in _TARGET_NAMES:
             return col
 
     # Priority 2: Fall back to last column
-    # (only if it looks like a reasonable target — not too many unique values
-    #  relative to row count, which would suggest it's an ID or text column)
     last_col = df.columns[-1]
     n_unique = df[last_col].nunique()
     n_rows = len(df)
 
-    # If the last column has unique values for almost every row, it's likely
-    # an ID column, not a target
+    # If last column has unique values for almost every row, it's likely an ID
     if n_unique / n_rows > 0.5 and n_unique > 20:
         return None
 
@@ -260,21 +398,11 @@ def _detect_target_column(df: pd.DataFrame) -> str | None:
 def _infer_task_type(df: pd.DataFrame, target_col: str | None) -> str:
     """Infer what kind of ML task this dataset is for.
 
-    Three types:
-    - 'classification': predict a category (spam/not-spam, cat/dog/bird)
-    - 'regression': predict a continuous number (house price, temperature)
-    - 'clustering': no target — group similar rows together
-
     Decision logic:
     - No target column → clustering
-    - Target is categorical (object/string dtype) → classification
+    - Target is categorical → classification
     - Target is numeric with ≤ 20 unique values → classification
-      (e.g., 0/1 for binary, or 1-5 for ratings)
     - Target is numeric with > 20 unique values → regression
-      (e.g., house prices: $150k, $200k, $350k, ...)
-
-    The threshold of 20 is a common heuristic. A number with 20+ unique
-    values is almost always continuous, not categorical.
 
     Args:
         df: The dataset.
@@ -288,20 +416,17 @@ def _infer_task_type(df: pd.DataFrame, target_col: str | None) -> str:
 
     series = df[target_col].dropna()
 
-    # If the target column contains text/categories → classification
     if series.dtype == "object" or series.dtype.name == "category":
         return "classification"
 
-    # If numeric but few unique values → classification (e.g., 0 and 1)
     if series.nunique() <= 20:
         return "classification"
 
-    # Many unique numeric values → regression
     return "regression"
 
 
 # ─────────────────────────────────────────────────────────────
-# 5. WARNING GENERATION
+# WARNING GENERATION (Person B)
 # ─────────────────────────────────────────────────────────────
 
 
@@ -315,8 +440,7 @@ def _generate_warnings(
     """Generate human-readable warnings about potential data issues.
 
     These warnings help the user understand problems in their data BEFORE
-    training a model. Better to catch issues early than wonder why the
-    model performs badly later.
+    training a model.
 
     Args:
         class_balance: Output of _analyse_class_balance, or None.
@@ -377,176 +501,64 @@ def _generate_warnings(
 
 
 # ─────────────────────────────────────────────────────────────
-# 6. FEATURE TYPE DETECTION (helper for Person A's profile logic)
+# MAIN ENTRY POINT — profile()
 # ─────────────────────────────────────────────────────────────
 
 
-def _detect_feature_types(df: pd.DataFrame) -> dict[str, list[str]]:
-    """Categorise each column into a feature type.
-
-    Types:
-        - numeric: int or float columns (age, price, temperature)
-        - categorical: string/object columns with multiple values (color, city)
-        - binary: columns with exactly 2 unique values (yes/no, 0/1, True/False)
-        - datetime: date or time columns
-        - text: string columns with very high cardinality (likely free text)
-
-    Args:
-        df: The dataset.
-
-    Returns:
-        Dict with keys 'numeric', 'categorical', 'binary', 'datetime', 'text'.
-    """
-    types: dict[str, list[str]] = {
-        "numeric": [],
-        "categorical": [],
-        "binary": [],
-        "datetime": [],
-        "text": [],
-    }
-
-    for col in df.columns:
-        n_unique = df[col].nunique()
-
-        # Check binary first (could be any dtype)
-        if n_unique == 2:
-            types["binary"].append(col)
-        elif pd.api.types.is_datetime64_any_dtype(df[col]):
-            types["datetime"].append(col)
-        elif pd.api.types.is_numeric_dtype(df[col]):
-            types["numeric"].append(col)
-        elif df[col].dtype == "object" or df[col].dtype.name == "category":
-            # High cardinality text vs normal categorical
-            if n_unique / len(df) > 0.5 and n_unique > 50:
-                types["text"].append(col)
-            else:
-                types["categorical"].append(col)
-
-    return types
-
-
-# ─────────────────────────────────────────────────────────────
-# 7. BASIC STATISTICS
-# ─────────────────────────────────────────────────────────────
-
-
-def _compute_basic_stats(df: pd.DataFrame) -> pd.DataFrame | None:
-    """Compute descriptive statistics for all numeric columns.
-
-    Computes: mean, std, min, 25%, 50% (median), 75%, max, skew.
-
-    Skewness tells you if the data is lopsided:
-        skew ≈ 0  → symmetric (normal-ish)
-        skew > 1  → right-skewed (long tail to the right, e.g. income data)
-        skew < -1 → left-skewed (long tail to the left)
-
-    This helps decide whether to apply log transforms or use robust scalers.
-
-    Args:
-        df: The dataset.
-
-    Returns:
-        DataFrame with statistics per numeric column, or None if no numeric cols.
-    """
-    numeric_df = df.select_dtypes(include=[np.number])
-
-    if numeric_df.empty:
-        return None
-
-    stats = numeric_df.describe().T  # Transpose so columns are stats
-    stats["skew"] = numeric_df.skew()
-
-    return stats
-
-
-# ─────────────────────────────────────────────────────────────
-# 8. DATASET HASHING
-# ─────────────────────────────────────────────────────────────
-
-
-def _hash_dataframe(df: pd.DataFrame) -> str:
-    """Generate a SHA-256 hash of the DataFrame for reproducibility.
-
-    This lets us verify that two experiments used the SAME data.
-    If you run a model on Monday and get 85% accuracy, then re-run
-    on Tuesday, the hash confirms the data hasn't changed.
-
-    Args:
-        df: The dataset.
-
-    Returns:
-        64-character hex string (SHA-256 digest).
-    """
-    # pd.util.hash_pandas_object gives a per-row hash; we combine them
-    content = pd.util.hash_pandas_object(df, index=True).values
-    return hashlib.sha256(content.tobytes()).hexdigest()
-
-
-# ─────────────────────────────────────────────────────────────
-# 9. MAIN ENTRY POINT — profile()
-# ─────────────────────────────────────────────────────────────
-
-
-def profile(data: pd.DataFrame | str) -> DataProfile:
+def profile(data: pd.DataFrame | str | Path | np.ndarray) -> DataProfile:
     """Profile a dataset and return a complete DataProfile.
 
     This is the ONE function users call. It runs all analyses and
     packages everything into a single DataProfile object.
 
+    Accepts a pandas DataFrame, a file path (CSV/Excel/Parquet/JSON),
+    or a numpy array. Returns a DataProfile populated with all fields.
+
     Usage:
         import pandas as pd
-        from xaura.profiler.profiler import profile
+        from xaura import profile
 
         df = pd.read_csv("my_data.csv")
         result = profile(df)
-
         print(result.summary())
-        print(result.is_imbalanced)
-        print(result.warnings)
 
     Args:
-        data: A pandas DataFrame, or a file path (str) to a CSV file.
+        data: A pandas DataFrame, path to a data file, or numpy array.
 
     Returns:
-        DataProfile with all fields populated.
+        A DataProfile with all fields populated.
 
     Raises:
-        TypeError: If data is not a DataFrame or string path.
-        FileNotFoundError: If string path doesn't exist.
+        ValueError: If the data is empty or cannot be loaded.
+        FileNotFoundError: If a file path is given but doesn't exist.
+        TypeError: If the data type is not supported.
     """
-    # --- Step 0: Handle input type ---
-    if isinstance(data, str):
-        df = pd.read_csv(data)
-    elif isinstance(data, pd.DataFrame):
-        df = data
-    else:
-        raise TypeError(f"Expected a pandas DataFrame or CSV file path, got {type(data).__name__}")
+    # --- Step 0: Load and validate ---
+    df = _load_data(data)
+    _validate(df)
 
-    if df.empty:
-        return DataProfile(shape=(0, df.shape[1]))
-
-    # --- Step 1: Basic info ---
+    # --- Step 1: Basic info (Person A) ---
     shape = df.shape
     feature_types = _detect_feature_types(df)
     basic_stats = _compute_basic_stats(df)
-    dataset_hash = _hash_dataframe(df)
+    dataset_hash = _compute_hash(df)
 
-    # --- Step 2: Target detection ---
+    # --- Step 2: Target detection (Person B) ---
     target_col = _detect_target_column(df)
     task_type = _infer_task_type(df, target_col)
 
-    # --- Step 3: Class balance (only if classification) ---
+    # --- Step 3: Class balance (Person B) ---
     class_balance = _analyse_class_balance(df, target_col)
 
-    # --- Step 4: Correlations ---
+    # --- Step 4: Correlations (Person B) ---
     corr_matrix = _compute_correlations(df)
     high_corr = _find_high_correlations(corr_matrix)
 
-    # --- Step 5: Missing values ---
+    # --- Step 5: Missing values (Person B) ---
     missing_counts = _analyse_missing_values(df)
     missing_severity = _classify_missing_severity(missing_counts, shape[0])
 
-    # --- Step 6: Generate warnings ---
+    # --- Step 6: Generate warnings (Person B) ---
     warnings = _generate_warnings(
         class_balance=class_balance,
         high_correlations=high_corr,
