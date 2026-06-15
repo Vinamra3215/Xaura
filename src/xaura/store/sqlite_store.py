@@ -77,7 +77,7 @@ def init_db(db_path: str | Path | None = None) -> Path:
     path = Path(db_path) if db_path else DEFAULT_DB_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    with sqlite3.connect(str(path)) as conn:
+    with contextlib.closing(sqlite3.connect(str(path))) as conn:
         conn.execute(_CREATE_TABLE_SQL)
         conn.commit()
 
@@ -128,7 +128,7 @@ def create_run(run_data: dict[str, Any], db_path: str | Path | None = None) -> s
     run_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
 
-    with sqlite3.connect(str(path)) as conn:
+    with contextlib.closing(sqlite3.connect(str(path))) as conn:
         conn.execute(
             """
             INSERT INTO experiments
@@ -205,7 +205,7 @@ def get_run(run_id: str, db_path: str | Path | None = None) -> dict[str, Any] | 
     """
     path = Path(db_path) if db_path else DEFAULT_DB_PATH
 
-    with sqlite3.connect(str(path)) as conn:
+    with contextlib.closing(sqlite3.connect(str(path))) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.execute("SELECT * FROM experiments WHERE id = ?", (run_id,))
         row = cursor.fetchone()
@@ -267,7 +267,7 @@ def list_runs(
 
     query += " ORDER BY created_at DESC"
 
-    with sqlite3.connect(str(path)) as conn:
+    with contextlib.closing(sqlite3.connect(str(path))) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.execute(query, params)
         rows = cursor.fetchall()
@@ -305,10 +305,12 @@ def delete_run(run_id: str, db_path: str | Path | None = None) -> bool:
     """
     path = Path(db_path) if db_path else DEFAULT_DB_PATH
 
-    with sqlite3.connect(str(path)) as conn:
+    with contextlib.closing(sqlite3.connect(str(path))) as conn:
         cursor = conn.execute("DELETE FROM experiments WHERE id = ?", (run_id,))
         conn.commit()
-        return cursor.rowcount > 0
+        deleted = cursor.rowcount > 0
+
+    return deleted
 
 
 # ─────────────────────────────────────────────────────────────
@@ -359,7 +361,7 @@ def get_metrics_comparison(
         ORDER BY created_at DESC
     """
 
-    with sqlite3.connect(str(path)) as conn:
+    with contextlib.closing(sqlite3.connect(str(path))) as conn:
         conn.row_factory = sqlite3.Row
         cursor = conn.execute(query, run_ids)
         rows = cursor.fetchall()
