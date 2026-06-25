@@ -23,7 +23,10 @@ select = [
     "SIM",  # flake8-simplify
 ]
 ignore = [
-    "E501",  # line too long — handled by black/ruff-format
+    "E501",   # line too long — handled by black/ruff-format
+    "N803",   # argument name should be lowercase — ML convention uses X, X_train
+    "N806",   # variable name should be lowercase — ML convention uses X, X_train
+    "B007",   # loop variable not used — false positive in registry iteration
 ]
 
 [lint.isort]
