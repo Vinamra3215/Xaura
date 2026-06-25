@@ -21,23 +21,22 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    roc_auc_score,
-    mean_squared_error,
-    mean_absolute_error,
-    r2_score,
-    silhouette_score,
     calinski_harabasz_score,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    precision_score,
+    r2_score,
+    recall_score,
+    roc_auc_score,
+    silhouette_score,
 )
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 from xaura.profiler.dataprofile import DataProfile
-
 
 # ---------------------------------------------------------------------------
 # Result dataclass
@@ -216,9 +215,7 @@ class BaseModel(ABC):
             target = str(df.columns[-1])
 
         # Split data
-        X_train, X_test, y_train, y_test = self._split_data(
-            df, target, test_size
-        )
+        X_train, X_test, y_train, y_test = self._split_data(df, target, test_size)
 
         # Encode categoricals
         X_train_enc, X_test_enc, encoders = self._encode_categoricals(X_train, X_test)
@@ -373,9 +370,7 @@ class BaseModel(ABC):
             test_vals = X_test[col].astype(str)
             known = set(le.classes_)
             X_test[col] = test_vals.map(
-                lambda x, le=le, known=known: (
-                    le.transform([x])[0] if x in known else -1
-                )
+                lambda x, le=le, known=known: (le.transform([x])[0] if x in known else -1)
             )
 
             encoders[col] = le

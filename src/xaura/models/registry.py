@@ -120,9 +120,7 @@ def run_model(
     # 1. Look up model class
     if model_name not in _MODEL_REGISTRY:
         available = ", ".join(sorted(_MODEL_REGISTRY.keys()))
-        raise KeyError(
-            f"Model '{model_name}' not found. Available models: {available}"
-        )
+        raise KeyError(f"Model '{model_name}' not found. Available models: {available}")
 
     model_class = _MODEL_REGISTRY[model_name]
 
