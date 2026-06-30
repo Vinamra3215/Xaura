@@ -60,6 +60,9 @@ def get_defaults(profile: DataProfile, model_name: str) -> dict[str, Any]:
         "lightgbm_cls": _lightgbm_cls_defaults,
         "random_forest_reg": _random_forest_reg_defaults,
         "xgboost_reg": _xgboost_reg_defaults,
+        # Person B's clusterers (Week 2)
+        "dbscan": _dbscan_defaults,
+        "hierarchical": _hierarchical_defaults,
         # Person A's models (Week 2) — we provide defaults for them too
         "logistic": _logistic_defaults,
         "random_forest": _random_forest_cls_defaults,
@@ -71,7 +74,7 @@ def get_defaults(profile: DataProfile, model_name: str) -> dict[str, Any]:
     fn = dispatch.get(model_name)
     if fn is None:
         raise ValueError(
-            f"Unknown model name: {model_name!r}. " f"Supported: {sorted(dispatch.keys())}"
+            f"Unknown model name: {model_name!r}. Supported: {sorted(dispatch.keys())}"
         )
 
     return fn(profile)
@@ -487,4 +490,45 @@ def _lasso_defaults(profile: DataProfile) -> dict[str, Any]:
         "fit_intercept": True,
         "max_iter": 2000,
         "random_state": 42,
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# Person B's clusterers
+# ─────────────────────────────────────────────────────────────
+
+
+def _dbscan_defaults(profile: DataProfile) -> dict[str, Any]:
+    """Defaults for DBSCAN.
+
+    Key adaptations:
+    - min_samples scales with feature count (higher dimensionality
+      needs more samples to define a dense neighbourhood)
+    - eps kept at 0.5 as a sensible starting point; users should
+      tune this based on a k-distance plot
+    """
+    n_feat = _n_features(profile)
+
+    # min_samples heuristic: max(5, n_features * 2)
+    # Higher-dimensional data needs more neighbours to define density
+    min_samples = max(5, n_feat * 2)
+
+    return {
+        "eps": 0.5,
+        "min_samples": min_samples,
+        "metric": "euclidean",
+    }
+
+
+def _hierarchical_defaults(profile: DataProfile) -> dict[str, Any]:
+    """Defaults for Agglomerative (Hierarchical) Clustering.
+
+    Key adaptations:
+    - n_clusters=3 (sensible starting point, matches K-Means)
+    - linkage='ward' (minimum variance — best general-purpose)
+    - Ward requires Euclidean distance (enforced by sklearn)
+    """
+    return {
+        "n_clusters": 3,
+        "linkage": "ward",
     }
