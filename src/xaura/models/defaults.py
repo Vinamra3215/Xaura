@@ -74,7 +74,7 @@ def get_defaults(profile: DataProfile, model_name: str) -> dict[str, Any]:
     fn = dispatch.get(model_name)
     if fn is None:
         raise ValueError(
-            f"Unknown model name: {model_name!r}. " f"Supported: {sorted(dispatch.keys())}"
+            f"Unknown model name: {model_name!r}. Supported: {sorted(dispatch.keys())}"
         )
 
     return fn(profile)

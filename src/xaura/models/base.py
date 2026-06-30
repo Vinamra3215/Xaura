@@ -370,7 +370,7 @@ class BaseModel(ABC):
             test_vals = X_test[col].astype(str)
             known = set(le.classes_)
             X_test[col] = test_vals.map(
-                lambda x, le=le, known=known: (le.transform([x])[0] if x in known else -1)
+                lambda x, le=le, known=known: le.transform([x])[0] if x in known else -1
             )
 
             encoders[col] = le

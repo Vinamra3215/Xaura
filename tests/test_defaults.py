@@ -96,6 +96,8 @@ class TestDispatch:
         "lightgbm_cls",
         "random_forest_reg",
         "xgboost_reg",
+        "dbscan",
+        "hierarchical",
         "logistic",
         "random_forest",
         "linear",
@@ -253,3 +255,24 @@ class TestModelSpecificKeys:
         for name in ["xgboost_cls", "lightgbm_cls", "random_forest_reg", "xgboost_reg"]:
             config = get_defaults(medium_profile, name)
             assert config["random_state"] == 42, f"{name} missing random_state=42"
+
+    def test_dbscan_keys(self, medium_profile):
+        config = get_defaults(medium_profile, "dbscan")
+        assert "eps" in config
+        assert "min_samples" in config
+        assert "metric" in config
+        assert config["eps"] == 0.5
+        assert config["metric"] == "euclidean"
+
+    def test_dbscan_min_samples_scales_with_features(self, high_dim_profile):
+        """DBSCAN min_samples should be higher for high-dimensional data."""
+        small_config = get_defaults(
+            _make_profile(n_numeric=3, n_categorical=0, n_binary=0), "dbscan"
+        )
+        large_config = get_defaults(high_dim_profile, "dbscan")
+        assert large_config["min_samples"] > small_config["min_samples"]
+
+    def test_hierarchical_keys(self, medium_profile):
+        config = get_defaults(medium_profile, "hierarchical")
+        assert config["n_clusters"] == 3
+        assert config["linkage"] == "ward"
