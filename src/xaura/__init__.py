@@ -2,7 +2,7 @@
 
 __version__ = "0.1.0"
 
-from xaura.profiler import DataProfile, profile
 from xaura.models import run_model
+from xaura.profiler import DataProfile, profile
 
 __all__ = ["DataProfile", "profile", "run_model", "__version__"]
