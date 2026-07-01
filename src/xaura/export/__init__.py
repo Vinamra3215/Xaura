@@ -4,13 +4,16 @@ Public API:
     export_log_csv   — Export full experiment log as a flat CSV file.
     export_plots     — Export all visualisation charts as PNG/PDF.
     export_single_plot — Export a single chart by name.
+    export_run       — Export a model run as a ZIP bundle.
 """
 
 from xaura.export.csv_export import export_log_csv
+from xaura.export.exporter import export_run
 from xaura.export.plot_export import export_plots, export_single_plot
 
 __all__ = [
     "export_log_csv",
     "export_plots",
     "export_single_plot",
+    "export_run",
 ]
