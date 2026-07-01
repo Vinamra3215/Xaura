@@ -1,4 +1,4 @@
-"""XAURA Export — package model runs into shareable bundles."""
+"""XAURA Export - package model runs into shareable bundles."""
 
 from xaura.export.exporter import export_run
 
