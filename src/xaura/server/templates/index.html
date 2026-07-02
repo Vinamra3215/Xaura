@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}XAURA - Upload & Analyze{% endblock %}
+{% block nav_home %}active{% endblock %}
+
+{% block content %}
+<!-- ── Hero Section ───────────────────────────────────────────── -->
+<section class="hero">
+    <div class="hero-glow"></div>
+    <h1 class="hero-title">
+        Automated Machine Learning,
+        <span class="hero-gradient">Made Beautiful.</span>
+    </h1>
+    <p class="hero-subtitle">
+        Upload a dataset. Profile it. Train models. View interactive charts.
+        Export results. All in one place.
+    </p>
+</section>
+
+<!-- ── Upload Section ─────────────────────────────────────────── -->
+<section class="upload-section">
+    <div class="upload-dropzone" id="dropzone">
+        <div class="dropzone-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+        </div>
+        <h3 class="dropzone-title">Drop your CSV here</h3>
+        <p class="dropzone-subtitle">or click to browse files</p>
+        <input type="file" id="file-input" accept=".csv" hidden>
+    </div>
+
+    <!-- Progress bar (hidden by default) -->
+    <div class="upload-progress" id="upload-progress" style="display: none;">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <p class="progress-text" id="progress-text">Uploading...</p>
+    </div>
+
+    <!-- Error message -->
+    <div class="upload-error" id="upload-error" style="display: none;">
+        <p id="error-text"></p>
+    </div>
+</section>
+
+<!-- ── How It Works ───────────────────────────────────────────── -->
+<section class="steps-section">
+    <h2 class="section-title">How It Works</h2>
+    <div class="steps-grid">
+        <div class="step-card">
+            <div class="step-number">1</div>
+            <h3 class="step-title">Upload</h3>
+            <p class="step-desc">Drop a CSV file to get started. XAURA reads your data and prepares it for analysis.</p>
+        </div>
+        <div class="step-card">
+            <div class="step-number">2</div>
+            <h3 class="step-title">Profile</h3>
+            <p class="step-desc">See your dataset's shape, types, missing values, and quality warnings at a glance.</p>
+        </div>
+        <div class="step-card">
+            <div class="step-number">3</div>
+            <h3 class="step-title">Train & Visualize</h3>
+            <p class="step-desc">Pick a model, train it, and see interactive charts — confusion matrix, ROC, feature importance.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ── Models Section ─────────────────────────────────────────── -->
+<section class="models-section">
+    <h2 class="section-title">Available Models</h2>
+    <div class="models-grid">
+        <div class="model-card">
+            <div class="model-icon classification">C</div>
+            <h4>Classification</h4>
+            <p>Random Forest, XGBoost, LightGBM, Logistic Regression</p>
+        </div>
+        <div class="model-card">
+            <div class="model-icon regression">R</div>
+            <h4>Regression</h4>
+            <p>Random Forest, XGBoost, LightGBM, Linear Regression</p>
+        </div>
+        <div class="model-card">
+            <div class="model-icon clustering">K</div>
+            <h4>Clustering</h4>
+            <p>KMeans, DBSCAN, Hierarchical Clustering</p>
+        </div>
+    </div>
+</section>
+{% endblock %}
