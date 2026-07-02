@@ -71,12 +71,19 @@ def create_app() -> FastAPI:
             {"request": request},
         )
 
-    # ── Include routers ───────────────────────────────────────────────
-    # These will be added in Day 2 and Day 3:
+    # ── Include routers ───────────────────────────────────────────
+    # Person A's routes (will be uncommented when built):
     # from xaura.server.routes.profile_routes import router as profile_router
     # from xaura.server.routes.model_routes import router as model_router
     # app.include_router(profile_router)
     # app.include_router(model_router)
+
+    # Person B's routes:
+    from xaura.server.routes.experiment_routes import router as experiment_router
+    from xaura.server.routes.export_routes import router as export_router
+
+    app.include_router(experiment_router)
+    app.include_router(export_router)
 
     return app
 
