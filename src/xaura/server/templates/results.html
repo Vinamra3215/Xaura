@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}XAURA - Results: {{ model_name }}{% endblock %}
+{% block nav_results %}active{% endblock %}
+
+{% block content %}
+<section class="results-page">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <div class="results-header">
+        <div class="results-title-row">
+            <h1 class="page-title">Model Results</h1>
+            <div class="results-actions">
+                <button class="btn btn-secondary" onclick="window.location.href='/profile/{{ session_id }}'">
+                    Back to Profile
+                </button>
+                <button class="btn btn-primary" onclick="exportResults('{{ session_id }}')">
+                    Export ZIP
+                </button>
+            </div>
+        </div>
+        <p class="page-subtitle">{{ filename }} &mdash; {{ model_name }}</p>
+    </div>
+
+    <!-- ── Model Info Cards ───────────────────────────────────── -->
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-value">{{ model_name }}</div>
+            <div class="summary-label">Model</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">{{ task_type }}</div>
+            <div class="summary-label">Task Type</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">{{ train_time }}s</div>
+            <div class="summary-label">Train Time</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">{{ metrics | length }}</div>
+            <div class="summary-label">Metrics</div>
+        </div>
+    </div>
+
+    <!-- ── Metrics Panel ──────────────────────────────────────── -->
+    <div class="card">
+        <h3 class="card-title">Performance Metrics</h3>
+        <div class="metrics-panel">
+            {% for name, value in metrics.items() %}
+            <div class="metric-row">
+                <span class="metric-name">{{ name }}</span>
+                {% if value is number and value <= 1.0 and value >= 0.0 %}
+                <div class="metric-bar">
+                    <div class="metric-fill" style="width: {{ (value * 100) | round(1) }}%"></div>
+                </div>
+                {% endif %}
+                <span class="metric-value">{{ value }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ── Charts Grid ────────────────────────────────────────── -->
+    {% if charts %}
+    <h3 class="section-title" style="text-align: left; margin-top: 32px;">Interactive Charts</h3>
+    <div class="charts-grid">
+        {% if charts.get('confusion_matrix') %}
+        <div class="chart-container" id="chart-confusion-matrix"></div>
+        {% endif %}
+        {% if charts.get('roc_curve') %}
+        <div class="chart-container" id="chart-roc-curve"></div>
+        {% endif %}
+        {% if charts.get('precision_recall') %}
+        <div class="chart-container" id="chart-precision-recall"></div>
+        {% endif %}
+        {% if charts.get('feature_importance') %}
+        <div class="chart-container" id="chart-feature-importance"></div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── Config Panel ───────────────────────────────────────── -->
+    <div class="card" style="margin-top: 24px;">
+        <h3 class="card-title">Hyperparameters</h3>
+        <pre class="config-pre">{{ config_str }}</pre>
+    </div>
+
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Render charts from server-provided JSON
+    document.addEventListener("DOMContentLoaded", function() {
+        {% if charts.get('confusion_matrix') %}
+        renderChart("chart-confusion-matrix", '{{ charts.confusion_matrix | safe }}');
+        {% endif %}
+        {% if charts.get('roc_curve') %}
+        renderChart("chart-roc-curve", '{{ charts.roc_curve | safe }}');
+        {% endif %}
+        {% if charts.get('precision_recall') %}
+        renderChart("chart-precision-recall", '{{ charts.precision_recall | safe }}');
+        {% endif %}
+        {% if charts.get('feature_importance') %}
+        renderChart("chart-feature-importance", '{{ charts.feature_importance | safe }}');
+        {% endif %}
+    });
+</script>
+{% endblock %}

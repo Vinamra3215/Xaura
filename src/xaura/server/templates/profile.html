@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}XAURA - Profile: {{ filename }}{% endblock %}
+{% block nav_profile %}active{% endblock %}
+
+{% block content %}
+<section class="profile-page">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <div class="profile-header">
+        <h1 class="page-title">Dataset Profile</h1>
+        <p class="page-subtitle">{{ filename }}</p>
+    </div>
+
+    <!-- ── Summary Cards ──────────────────────────────────────── -->
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-value">{{ "{:,}".format(n_rows) }}</div>
+            <div class="summary-label">Rows</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">{{ n_cols }}</div>
+            <div class="summary-label">Columns</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">{{ task_type or "unknown" }}</div>
+            <div class="summary-label">Task Type</div>
+        </div>
+        <div class="summary-card">
+            {% if has_missing %}
+            <div class="summary-value warning">{{ missing_pct }}%</div>
+            {% else %}
+            <div class="summary-value success">None</div>
+            {% endif %}
+            <div class="summary-label">Missing Values</div>
+        </div>
+    </div>
+
+    <!-- ── Feature Types ──────────────────────────────────────── -->
+    <div class="card">
+        <h3 class="card-title">Feature Types</h3>
+        <div class="feature-types-grid">
+            {% for feat_type, count in feature_types.items() %}
+            <div class="feature-type-item">
+                <span class="feature-type-name">{{ feat_type }}</span>
+                <span class="feature-type-count">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ── Target Info ────────────────────────────────────────── -->
+    {% if target_column %}
+    <div class="card">
+        <h3 class="card-title">Target Column</h3>
+        <div class="target-info">
+            <div class="target-detail">
+                <span class="target-label">Column:</span>
+                <span class="target-value">{{ target_column }}</span>
+            </div>
+            <div class="target-detail">
+                <span class="target-label">Task:</span>
+                <span class="target-value">{{ task_type }}</span>
+            </div>
+            <div class="target-detail">
+                <span class="target-label">Imbalanced:</span>
+                <span class="target-value {% if is_imbalanced %}warning{% else %}success{% endif %}">
+                    {{ "Yes" if is_imbalanced else "No" }}
+                </span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Column Details ─────────────────────────────────────── -->
+    <div class="card">
+        <h3 class="card-title">Column Details</h3>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Column</th>
+                        <th>Type</th>
+                        <th>Missing</th>
+                        <th>Unique</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for col in columns %}
+                    <tr>
+                        <td><strong>{{ col.name }}</strong></td>
+                        <td><code>{{ col.dtype }}</code></td>
+                        <td>
+                            {% if col.missing_count > 0 %}
+                            <span class="warning">{{ col.missing_pct }}% ({{ col.missing_count }})</span>
+                            {% else %}
+                            <span class="success">0%</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ col.unique }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── Warnings ───────────────────────────────────────────── -->
+    {% if warnings %}
+    <div class="card warnings-card">
+        <h3 class="card-title">Warnings</h3>
+        <ul class="warnings-list">
+            {% for warning in warnings %}
+            <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- ── Run Model Button ───────────────────────────────────── -->
+    <div class="profile-actions">
+        <div class="run-model-form">
+            <h3 class="card-title">Run a Model</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="model-select">Model</label>
+                    <select id="model-select" class="form-select">
+                        <optgroup label="Classification">
+                            <option value="rf_classifier">Random Forest</option>
+                            <option value="xgb_classifier">XGBoost</option>
+                            <option value="lgbm_classifier">LightGBM</option>
+                            <option value="logistic_regression">Logistic Regression</option>
+                        </optgroup>
+                        <optgroup label="Regression">
+                            <option value="rf_regressor">Random Forest Regressor</option>
+                            <option value="xgb_regressor">XGBoost Regressor</option>
+                            <option value="lgbm_regressor">LightGBM Regressor</option>
+                            <option value="linear_regression">Linear Regression</option>
+                        </optgroup>
+                        <optgroup label="Clustering">
+                            <option value="kmeans">KMeans</option>
+                            <option value="dbscan">DBSCAN</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="target-select">Target Column</label>
+                    <select id="target-select" class="form-select">
+                        {% for col in columns %}
+                        <option value="{{ col.name }}" {% if col.name == target_column %}selected{% endif %}>
+                            {{ col.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="run-model-btn" onclick="runModel('{{ session_id }}', document.getElementById('model-select').value, document.getElementById('target-select').value)">
+                    Run Model
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Loading Overlay ────────────────────────────────────── -->
+    <div class="loading-overlay" id="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Training model...</p>
+    </div>
+
+    <!-- ── Dataset Hash ───────────────────────────────────────── -->
+    <p class="dataset-hash">Dataset hash: {{ dataset_hash }}...</p>
+
+</section>
+{% endblock %}
