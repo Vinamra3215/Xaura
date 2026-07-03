@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}XAURA — Run Model{% endblock %}
+{% block nav_results %}active{% endblock %}
+
+{% block content %}
+<!-- ── Page Header ─────────────────────────────────────────── -->
+<section class="page-header">
+    <h1 class="page-title">Run Model</h1>
+    <p class="page-subtitle">
+        Select a model, choose your target column, and let XAURA handle the rest.
+    </p>
+</section>
+
+<!-- ── Run Configuration ──────────────────────────────────── -->
+<section class="run-section">
+    <div class="run-grid">
+        <!-- Left: Config Panel -->
+        <div class="card run-config-card">
+            <h3 class="card-title">Configuration</h3>
+
+            <!-- Dataset Info -->
+            <div class="config-group">
+                <label class="config-label">Dataset</label>
+                <div class="config-value" id="dataset-name">
+                    {{ profile.dataset_name | default("Uploaded dataset", true) }}
+                </div>
+                <div class="config-meta">
+                    {{ profile.n_rows | default(0) }} rows × {{ profile.n_cols | default(0) }} columns
+                </div>
+            </div>
+
+            <!-- Target Column -->
+            <div class="config-group">
+                <label class="config-label" for="target-select">Target Column</label>
+                <select id="target-select" class="config-select">
+                    <option value="" disabled selected>Choose target…</option>
+                    {% for col in columns %}
+                    <option value="{{ col }}"
+                        {% if col == profile.target_column %}selected{% endif %}>
+                        {{ col }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Task Type (auto-detected) -->
+            <div class="config-group">
+                <label class="config-label">Task Type</label>
+                <div class="task-badges">
+                    <span class="badge badge-classification" id="badge-classification">Classification</span>
+                    <span class="badge badge-regression" id="badge-regression">Regression</span>
+                    <span class="badge badge-clustering" id="badge-clustering">Clustering</span>
+                </div>
+            </div>
+
+            <!-- Model Selector -->
+            <div class="config-group">
+                <label class="config-label" for="model-select">Model</label>
+                <select id="model-select" class="config-select">
+                    <option value="" disabled selected>Choose model…</option>
+                    {% for model in models %}
+                    <option value="{{ model.name }}" data-task="{{ model.task_type }}">
+                        {{ model.display_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Run Button -->
+            <button class="btn btn-primary btn-run" id="run-btn" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Run Model
+            </button>
+        </div>
+
+        <!-- Right: Results Panel -->
+        <div class="card run-results-card" id="results-panel">
+            <div class="results-empty" id="results-empty">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="1.5" opacity="0.3">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <p>Configure and run a model to see results here.</p>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading-overlay" id="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+                <p>Training model…</p>
+            </div>
+
+            <!-- Metrics (hidden until results arrive) -->
+            <div id="results-content" style="display: none;">
+                <h3 class="card-title">
+                    <span id="result-model-name"></span>
+                    <span class="result-time" id="result-time"></span>
+                </h3>
+                <div id="metrics-container"></div>
+
+                <!-- Export Button -->
+                <div class="results-actions">
+                    <button class="btn btn-secondary" id="export-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Export ZIP
+                    </button>
+                    <a class="btn btn-secondary" href="/experiments">
+                        View All Experiments →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Charts Section ─────────────────────────────────────── -->
+<section id="charts-section" style="display: none;">
+    <h2 class="section-title" style="margin-top: 40px;">Visualisations</h2>
+    <div class="charts-grid" id="charts-grid">
+        <div class="chart-container" id="chart-0"></div>
+        <div class="chart-container" id="chart-1"></div>
+        <div class="chart-container" id="chart-2"></div>
+        <div class="chart-container" id="chart-3"></div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const SESSION_ID = "{{ session_id }}";
+    const TASK_TYPE = "{{ profile.task_type | default('', true) }}";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const targetSelect = document.getElementById("target-select");
+        const modelSelect  = document.getElementById("model-select");
+        const runBtn       = document.getElementById("run-btn");
+
+        // ── Highlight auto-detected task badge ──────────────────
+        function setTaskBadge(taskType) {
+            document.querySelectorAll(".badge").forEach(b => b.classList.remove("badge-active"));
+            const badge = document.getElementById("badge-" + taskType);
+            if (badge) badge.classList.add("badge-active");
+        }
+
+        if (TASK_TYPE) setTaskBadge(TASK_TYPE);
+
+        // ── Enable run button when both selects are filled ──────
+        function checkReady() {
+            runBtn.disabled = !(targetSelect.value && modelSelect.value);
+        }
+        targetSelect.addEventListener("change", checkReady);
+        modelSelect.addEventListener("change", checkReady);
+
+        // ── Run Model ───────────────────────────────────────────
+        runBtn.addEventListener("click", async () => {
+            const modelName = modelSelect.value;
+            const targetCol = targetSelect.value;
+
+            // Show loading
+            document.getElementById("results-empty").style.display = "none";
+            document.getElementById("results-content").style.display = "none";
+            document.getElementById("loading-overlay").style.display = "flex";
+            document.getElementById("charts-section").style.display = "none";
+            runBtn.disabled = true;
+
+            try {
+                const resp = await fetch("/api/run", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        session_id: SESSION_ID,
+                        model_name: modelName,
+                        target_col: targetCol,
+                    }),
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.detail || "Model run failed");
+                }
+
+                const data = await resp.json();
+                showResults(data);
+            } catch (err) {
+                alert("Error: " + err.message);
+                document.getElementById("results-empty").style.display = "flex";
+                document.getElementById("loading-overlay").style.display = "none";
+            } finally {
+                runBtn.disabled = false;
+            }
+        });
+
+        // ── Render Results ──────────────────────────────────────
+        function showResults(data) {
+            document.getElementById("loading-overlay").style.display = "none";
+            document.getElementById("results-content").style.display = "block";
+
+            // Model name & time
+            document.getElementById("result-model-name").textContent =
+                data.model_name || "Model";
+            document.getElementById("result-time").textContent =
+                data.train_time ? `${data.train_time.toFixed(2)}s` : "";
+
+            // Metrics
+            const container = document.getElementById("metrics-container");
+            container.innerHTML = "";
+
+            if (data.metrics) {
+                for (const [name, value] of Object.entries(data.metrics)) {
+                    const pct = Math.min(Math.abs(value) * 100, 100);
+                    container.innerHTML += `
+                        <div class="metric-row">
+                            <span class="metric-name">${name}</span>
+                            <div class="metric-bar">
+                                <div class="metric-fill" style="width: ${pct}%"></div>
+                            </div>
+                            <span class="metric-value">${value.toFixed(4)}</span>
+                        </div>`;
+                }
+            }
+
+            // Charts
+            if (data.charts && data.charts.length > 0) {
+                document.getElementById("charts-section").style.display = "block";
+                data.charts.forEach((chartJson, i) => {
+                    const el = document.getElementById("chart-" + i);
+                    if (el) renderChart("chart-" + i, JSON.stringify(chartJson));
+                });
+            }
+
+            // Export button
+            document.getElementById("export-btn").onclick = () => {
+                exportResults(SESSION_ID);
+            };
+        }
+    });
+</script>
+{% endblock %}

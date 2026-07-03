@@ -67,11 +67,47 @@ def create_app() -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):
         return templates.TemplateResponse(
-            request,
-            "index.html",
+            name="index.html",
+            request=request,
+        )
+
+    # ── Run page ──────────────────────────────────────────────────────
+    @app.get("/run/{session_id}", response_class=HTMLResponse)
+    async def run_page(request: Request, session_id: str):
+        session = app.state.sessions.get(session_id, {})
+        profile = session.get("profile", None)
+        df = session.get("df", None)
+
+        # Get the list of available models
+        import xaura.models.classifiers  # noqa: F401
+        import xaura.models.clusterers  # noqa: F401
+        import xaura.models.regressors  # noqa: F401
+        from xaura.models.registry import list_models
+
+        columns = list(df.columns) if df is not None else []
+        models = list_models()
+
+        return templates.TemplateResponse(
+            name="run.html",
+            request=request,
+            context={
+                "session_id": session_id,
+                "profile": profile,
+                "columns": columns,
+                "models": models,
+            },
+        )
+
+    # ── Experiments page ──────────────────────────────────────────────
+    @app.get("/experiments", response_class=HTMLResponse)
+    async def experiments_page(request: Request):
+        return templates.TemplateResponse(
+            name="experiments.html",
+            request=request,
         )
 
     # ── Include routers ───────────────────────────────────────────────
+    # Person A's routes:
     from xaura.server.routes.profile_routes import router as profile_router
 
     app.include_router(profile_router)
@@ -79,6 +115,13 @@ def create_app() -> FastAPI:
     from xaura.server.routes.model_routes import router as model_router
 
     app.include_router(model_router)
+
+    # Person B's routes:
+    from xaura.server.routes.experiment_routes import router as experiment_router
+    from xaura.server.routes.export_routes import router as export_router
+
+    app.include_router(experiment_router)
+    app.include_router(export_router)
 
     return app
 
