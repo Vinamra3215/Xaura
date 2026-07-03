@@ -67,8 +67,8 @@ def create_app() -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):
         return templates.TemplateResponse(
-            "index.html",
-            {"request": request},
+            name="index.html",
+            request=request,
         )
 
     # ── Run page ──────────────────────────────────────────────────────
@@ -88,9 +88,9 @@ def create_app() -> FastAPI:
         models = list_models()
 
         return templates.TemplateResponse(
-            "run.html",
-            {
-                "request": request,
+            name="run.html",
+            request=request,
+            context={
                 "session_id": session_id,
                 "profile": profile,
                 "columns": columns,
@@ -102,8 +102,8 @@ def create_app() -> FastAPI:
     @app.get("/experiments", response_class=HTMLResponse)
     async def experiments_page(request: Request):
         return templates.TemplateResponse(
-            "experiments.html",
-            {"request": request},
+            name="experiments.html",
+            request=request,
         )
 
     # ── Include routers ───────────────────────────────────────────
