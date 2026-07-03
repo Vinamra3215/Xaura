@@ -76,9 +76,9 @@ def create_app() -> FastAPI:
 
     app.include_router(profile_router)
 
-    # These will be added in Day 3:
-    # from xaura.server.routes.model_routes import router as model_router
-    # app.include_router(model_router)
+    from xaura.server.routes.model_routes import router as model_router
+
+    app.include_router(model_router)
 
     return app
 
