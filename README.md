@@ -1,7 +1,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-blue?style=for-the-badge&logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/status-Phase%201%20In%20Progress-orange?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/status-Phase%201%20Complete-brightgreen?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/tests-409%20passed-brightgreen?style=for-the-badge" />
   <img src="https://img.shields.io/badge/models-CPU%20Only-purple?style=for-the-badge" />
 </p>
 
@@ -417,6 +418,26 @@ xaura profile data.csv              # Profile a dataset, print summary
 xaura run rf_classifier data.csv    # Run a model from terminal
 xaura serve                         # Start the web UI at localhost:8000
 xaura export <run_id>               # Export a run bundle as ZIP
+```
+
+### 9. Test Coverage
+
+```
+409 tests across 14 test files — all passing
+
+Test Suites:
+  test_profiler.py            — Dataset profiling (shape, types, balance, warnings)
+  test_classifiers.py         — Classification models (RF, XGB, LightGBM, Logistic)
+  test_regressors.py          — Regression models (Linear, Ridge, Lasso, RF, XGB)
+  test_clusterers.py          — Clustering models (KMeans, DBSCAN, Hierarchical)
+  test_defaults.py            — Dataset-aware default engine
+  test_export.py              — ZIP bundle and CSV export
+  test_store.py               — SQLite experiment tracking
+  test_visualisation.py       — Plotly classification charts
+  test_visualisation_clustering.py  — Plotly clustering charts
+  test_visualisation_regression.py  — Plotly regression charts
+  test_cli.py                 — CLI commands (profile, run, serve, export)
+  test_api.py                 — FastAPI endpoints (upload, profile, run, results, export)
 ```
 
 ---
