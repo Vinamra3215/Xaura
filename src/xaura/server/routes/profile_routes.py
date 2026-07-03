@@ -128,9 +128,9 @@ async def profile_page(request: Request, session_id: str):
             feature_summary[feat_type] = len(columns)
 
     return _templates.TemplateResponse(
+        request,
         "profile.html",
         {
-            "request": request,
             "session_id": session_id,
             "filename": session["filename"],
             "n_rows": p.n_rows,
