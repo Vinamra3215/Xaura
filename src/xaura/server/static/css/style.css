@@ -829,3 +829,44 @@ code {
         flex-direction: column;
     }
 }
+
+/* ── Results Page ─────────────────────────────────────────────────── */
+.results-page {
+    padding: 40px 0 80px;
+}
+
+.results-header {
+    margin-bottom: 32px;
+}
+
+.results-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.results-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.metrics-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.config-pre {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent-cyan);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
