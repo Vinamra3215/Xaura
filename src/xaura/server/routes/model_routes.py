@@ -150,9 +150,9 @@ async def results_page(request: Request, session_id: str):
     config_str = json.dumps(result.config, indent=2, default=str)
 
     return _templates.TemplateResponse(
+        request,
         "results.html",
         {
-            "request": request,
             "session_id": session_id,
             "filename": session.get("filename", "dataset"),
             "model_name": result.model_name,
