@@ -74,11 +74,20 @@
 
     <!-- ── Column Details ─────────────────────────────────────── -->
     <div class="card">
-        <h3 class="card-title">Column Details</h3>
+        <div class="card-title-row">
+            <h3 class="card-title">Column Details</h3>
+            <div class="feature-selection-actions">
+                <button type="button" class="btn-link" onclick="toggleAllFeatures(true)">Select All</button>
+                <span class="divider">|</span>
+                <button type="button" class="btn-link" onclick="toggleAllFeatures(false)">Deselect All</button>
+                <span class="feature-count" id="feature-count"></span>
+            </div>
+        </div>
         <div class="table-wrapper">
             <table class="data-table">
                 <thead>
                     <tr>
+                        <th class="th-checkbox"><input type="checkbox" id="select-all-cb" checked onchange="toggleAllFeatures(this.checked)"></th>
                         <th>Column</th>
                         <th>Type</th>
                         <th>Missing</th>
@@ -88,6 +97,13 @@
                 <tbody>
                     {% for col in columns %}
                     <tr>
+                        <td class="td-checkbox">
+                            <input type="checkbox"
+                                   name="feature_col"
+                                   value="{{ col.name }}"
+                                   {% if col.name != target_column %}checked{% endif %}
+                                   onchange="updateFeatureCount()">
+                        </td>
                         <td><strong>{{ col.name }}</strong></td>
                         <td><code>{{ col.dtype }}</code></td>
                         <td>
@@ -152,34 +168,6 @@
                         </option>
                         {% endfor %}
                     </select>
-                </div>
-            </div>
-
-            <!-- Feature Column Selection -->
-            <div class="feature-selection">
-                <div class="feature-selection-header">
-                    <label>Feature Columns</label>
-                    <div class="feature-selection-actions">
-                        <button type="button" class="btn-link" onclick="toggleAllFeatures(true)">Select All</button>
-                        <span class="divider">|</span>
-                        <button type="button" class="btn-link" onclick="toggleAllFeatures(false)">Deselect All</button>
-                        <span class="feature-count" id="feature-count"></span>
-                    </div>
-                </div>
-                <div class="feature-checklist" id="feature-checklist">
-                    {% for col in columns %}
-                    <label class="feature-checkbox">
-                        <input type="checkbox"
-                               name="feature_col"
-                               value="{{ col.name }}"
-                               {% if col.name != target_column %}checked{% endif %}
-                               onchange="updateFeatureCount()">
-                        <span class="checkbox-label">
-                            {{ col.name }}
-                            <code>{{ col.dtype }}</code>
-                        </span>
-                    </label>
-                    {% endfor %}
                 </div>
             </div>
 
