@@ -440,12 +440,50 @@ def _infer_task_type(df: pd.DataFrame, target_col: str | None) -> str:
 # ─────────────────────────────────────────────────────────────
 
 
+def _detect_target_leakage(
+    df: pd.DataFrame,
+    target_col: str | None,
+    threshold: float = 0.95,
+) -> list[tuple[str, float]]:
+    """Detect features suspiciously correlated with the target column.
+
+    A feature with >0.95 correlation to the target is almost certainly
+    derived from it (e.g. casual + registered = count) and will cause
+    data leakage — producing artificially perfect model scores.
+
+    Args:
+        df: The dataset.
+        target_col: Name of the target column, or None.
+        threshold: Correlation threshold (default 0.95).
+
+    Returns:
+        List of (column_name, correlation) tuples for leaky features.
+    """
+    if target_col is None or target_col not in df.columns:
+        return []
+
+    numeric_df = df.select_dtypes(include="number")
+    if target_col not in numeric_df.columns:
+        return []
+
+    leaky = []
+    for col in numeric_df.columns:
+        if col == target_col:
+            continue
+        corr = numeric_df[col].corr(numeric_df[target_col])
+        if abs(corr) >= threshold:
+            leaky.append((col, round(corr, 4)))
+
+    return leaky
+
+
 def _generate_warnings(
     class_balance: dict[str, Any] | None,
     high_correlations: list[tuple[str, str, float]],
     missing_counts: dict[str, int],
     missing_severity: dict[str, str],
     n_rows: int,
+    target_leakage: list[tuple[str, float]] | None = None,
 ) -> list[str]:
     """Generate human-readable warnings about potential data issues.
 
@@ -458,11 +496,20 @@ def _generate_warnings(
         missing_counts: Output of _analyse_missing_values.
         missing_severity: Output of _classify_missing_severity.
         n_rows: Total rows in the dataset.
+        target_leakage: Output of _detect_target_leakage, or None.
 
     Returns:
         List of warning strings.
     """
     warnings = []
+
+    # --- Target leakage warnings (highest priority) ---
+    if target_leakage:
+        for col, corr in target_leakage:
+            warnings.append(
+                f"⚠️ Possible data leakage: '{col}' has {corr} correlation with "
+                f"the target — consider removing it before training."
+            )
 
     # --- Class imbalance warnings ---
     if class_balance and class_balance["ratio"] > 3.0:
@@ -568,6 +615,9 @@ def profile(data: pd.DataFrame | str | Path | np.ndarray) -> DataProfile:
     missing_counts = _analyse_missing_values(df)
     missing_severity = _classify_missing_severity(missing_counts, shape[0])
 
+    # --- Step 5b: Target leakage detection ---
+    target_leakage = _detect_target_leakage(df, target_col)
+
     # --- Step 6: Generate warnings (Person B) ---
     warnings = _generate_warnings(
         class_balance=class_balance,
@@ -575,6 +625,7 @@ def profile(data: pd.DataFrame | str | Path | np.ndarray) -> DataProfile:
         missing_counts=missing_counts,
         missing_severity=missing_severity,
         n_rows=shape[0],
+        target_leakage=target_leakage,
     )
 
     # --- Step 7: Package everything ---
