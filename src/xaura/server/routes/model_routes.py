@@ -53,13 +53,14 @@ async def run_model_endpoint(request: Request):
     session_id = body.get("session_id", "")
     model_name = body.get("model_name", "")
     target_col = body.get("target_col", "")
+    selected_columns = body.get("selected_columns", None)
 
     sessions = request.app.state.sessions
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found.")
 
     session = sessions[session_id]
-    df = session["df"]
+    df = session["df"].copy()
     profile = session["profile"]
 
     if not model_name:
@@ -68,6 +69,20 @@ async def run_model_endpoint(request: Request):
     # Override target column if user specified one
     if target_col and target_col != profile.target_column:
         profile.target_column = target_col
+
+    # Filter to selected feature columns + target
+    if selected_columns and isinstance(selected_columns, list):
+        cols_to_keep = list(selected_columns)
+        if target_col and target_col not in cols_to_keep:
+            cols_to_keep.append(target_col)
+        # Only keep columns that actually exist in the DataFrame
+        cols_to_keep = [c for c in cols_to_keep if c in df.columns]
+        if len(cols_to_keep) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail="Need at least one feature column and a target column.",
+            )
+        df = df[cols_to_keep]
 
     # Run the model
     try:
