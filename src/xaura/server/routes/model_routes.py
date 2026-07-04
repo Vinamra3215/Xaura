@@ -27,6 +27,16 @@ from xaura.visualisation.plotly_charts import (
     precision_recall_chart,
     roc_curve_chart,
 )
+from xaura.visualisation.plotly_clustering import (
+    cluster_scatter_pca,
+    silhouette_plot,
+)
+from xaura.visualisation.plotly_regression import (
+    predicted_vs_actual,
+    qq_plot,
+    residual_distribution,
+    residuals_vs_fitted,
+)
 
 router = APIRouter()
 
@@ -93,7 +103,7 @@ async def run_model_endpoint(request: Request):
     # Store result in session
     session["result"] = result
 
-    # Build chart JSONs for classification results
+    # Build chart JSONs based on task type
     charts = {}
     if result.task_type == "classification":
         try:
@@ -112,6 +122,34 @@ async def run_model_endpoint(request: Request):
             charts["feature_importance"] = feature_importance_chart(result).to_json()
         except Exception:
             charts["feature_importance"] = None
+
+    elif result.task_type == "regression":
+        try:
+            charts["residuals_vs_fitted"] = residuals_vs_fitted(result).to_json()
+        except Exception:
+            charts["residuals_vs_fitted"] = None
+        try:
+            charts["qq_plot"] = qq_plot(result).to_json()
+        except Exception:
+            charts["qq_plot"] = None
+        try:
+            charts["predicted_vs_actual"] = predicted_vs_actual(result).to_json()
+        except Exception:
+            charts["predicted_vs_actual"] = None
+        try:
+            charts["residual_distribution"] = residual_distribution(result).to_json()
+        except Exception:
+            charts["residual_distribution"] = None
+
+    elif result.task_type == "clustering":
+        try:
+            charts["cluster_scatter"] = cluster_scatter_pca(result).to_json()
+        except Exception:
+            charts["cluster_scatter"] = None
+        try:
+            charts["silhouette"] = silhouette_plot(result).to_json()
+        except Exception:
+            charts["silhouette"] = None
 
     # Store charts for the results page
     session["charts"] = charts
