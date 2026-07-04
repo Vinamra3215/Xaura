@@ -90,6 +90,41 @@ async def upload_and_profile(request: Request, file: Annotated[UploadFile, File(
 
 
 # ---------------------------------------------------------------------------
+# POST /api/profile/update_target — Dynamically update task type
+# ---------------------------------------------------------------------------
+
+
+@router.post("/api/profile/update_target")
+async def update_target(request: Request):
+    """Update the target column in the session and return the newly inferred task type."""
+    body = await request.json()
+    session_id = body.get("session_id")
+    target_col = body.get("target_col")
+
+    sessions = request.app.state.sessions
+    if not session_id or session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    session = sessions[session_id]
+    df = session["df"]
+    profile = session["profile"]
+
+    if target_col == "":
+        target_col = None
+
+    # Update target
+    profile.target_column = target_col
+
+    # Re-infer task type
+    from xaura.profiler.profiler import _infer_task_type
+
+    new_task_type = _infer_task_type(df, target_col)
+    profile.task_type = new_task_type
+
+    return {"task_type": new_task_type}
+
+
+# ---------------------------------------------------------------------------
 # GET /profile/{session_id} — Render profile page
 # ---------------------------------------------------------------------------
 

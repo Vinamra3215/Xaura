@@ -145,6 +145,19 @@ async function runModel(sessionId, modelName, targetCol) {
     const loadingOverlay = document.getElementById("loading-overlay");
     if (loadingOverlay) loadingOverlay.style.display = "flex";
 
+    // Collect selected feature columns
+    const checkboxes = document.querySelectorAll('input[name="feature_col"]:checked');
+    const selectedColumns = Array.from(checkboxes).map(cb => cb.value);
+
+    // Filter out the target column from features
+    const featureCols = selectedColumns.filter(col => col !== targetCol);
+
+    if (featureCols.length === 0) {
+        if (loadingOverlay) loadingOverlay.style.display = "none";
+        alert("Please select at least one feature column.");
+        return;
+    }
+
     try {
         const response = await fetch("/api/run", {
             method: "POST",
@@ -153,6 +166,7 @@ async function runModel(sessionId, modelName, targetCol) {
                 session_id: sessionId,
                 model_name: modelName,
                 target_col: targetCol,
+                selected_columns: featureCols,
             }),
         });
 
@@ -166,6 +180,91 @@ async function runModel(sessionId, modelName, targetCol) {
     } catch (err) {
         if (loadingOverlay) loadingOverlay.style.display = "none";
         alert("Error: " + err.message);
+    }
+}
+
+
+// ── Feature Column Helpers ──────────────────────────────────────────
+
+/**
+ * Toggle all feature checkboxes on or off.
+ */
+function toggleAllFeatures(checked) {
+    const checkboxes = document.querySelectorAll('input[name="feature_col"]');
+    checkboxes.forEach(cb => { cb.checked = checked; });
+    updateFeatureCount();
+}
+
+/**
+ * Update the feature count display and select-all checkbox state.
+ */
+function updateFeatureCount() {
+    const total = document.querySelectorAll('input[name="feature_col"]').length;
+    const checked = document.querySelectorAll('input[name="feature_col"]:checked').length;
+
+    // Update count display
+    const countEl = document.getElementById("feature-count");
+    if (countEl) {
+        countEl.textContent = `${checked}/${total} selected`;
+    }
+
+    // Update select-all checkbox state
+    const selectAllCb = document.getElementById("select-all-cb");
+    if (selectAllCb) {
+        selectAllCb.checked = (checked === total && total > 0);
+        selectAllCb.indeterminate = (checked > 0 && checked < total);
+    }
+}
+
+// Initialize count on page load
+document.addEventListener("DOMContentLoaded", function() {
+    if (document.getElementById("feature-count")) {
+        updateFeatureCount();
+    }
+});
+
+
+// ── Target Column Update ────────────────────────────────────────────
+
+/**
+ * Dynamically update the target column and task type on the server,
+ * then update the UI task type displays.
+ */
+async function updateTargetCol(sessionId, targetCol) {
+    try {
+        const response = await fetch("/api/profile/update_target", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                session_id: sessionId,
+                target_col: targetCol,
+            }),
+        });
+
+        if (!response.ok) {
+            console.error("Failed to update target column");
+            return;
+        }
+
+        const data = await response.json();
+        const newTaskType = data.task_type || "unknown";
+
+        // Update the UI
+        const typeDisplay = document.getElementById("task-type-display");
+        const typeDetailDisplay = document.getElementById("task-type-detail-display");
+        const targetColDisplay = document.getElementById("target-col-display");
+        const targetInfoCard = document.getElementById("target-info-card");
+
+        if (typeDisplay) typeDisplay.textContent = newTaskType;
+        if (typeDetailDisplay) typeDetailDisplay.textContent = newTaskType;
+        if (targetColDisplay) targetColDisplay.textContent = targetCol || "None";
+
+        if (targetInfoCard) {
+            targetInfoCard.style.display = targetCol ? "block" : "none";
+        }
+
+    } catch (err) {
+        console.error("Error updating target column:", err);
     }
 }
 

@@ -22,13 +22,20 @@ import xaura.models.regressors  # noqa: F401
 from xaura import run_model
 from xaura.export import export_run
 from xaura.visualisation.plotly_charts import (
-    actual_vs_predicted_chart,
-    cluster_scatter_chart,
     confusion_matrix_chart,
     feature_importance_chart,
     precision_recall_chart,
-    residuals_chart,
     roc_curve_chart,
+)
+from xaura.visualisation.plotly_clustering import (
+    cluster_scatter_pca,
+    silhouette_plot,
+)
+from xaura.visualisation.plotly_regression import (
+    predicted_vs_actual,
+    qq_plot,
+    residual_distribution,
+    residuals_vs_fitted,
 )
 
 router = APIRouter()
@@ -55,22 +62,39 @@ async def run_model_endpoint(request: Request):
     body = await request.json()
     session_id = body.get("session_id", "")
     model_name = body.get("model_name", "")
-    target_col = body.get("target_col", "")
+    target_col = body.get("target_col")
+    if target_col == "":
+        target_col = None
+    selected_columns = body.get("selected_columns", None)
 
     sessions = request.app.state.sessions
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found.")
 
     session = sessions[session_id]
-    df = session["df"]
+    df = session["df"].copy()
     profile = session["profile"]
 
     if not model_name:
         raise HTTPException(status_code=400, detail="model_name is required.")
 
     # Override target column if user specified one
-    if target_col and target_col != profile.target_column:
+    if target_col != profile.target_column:
         profile.target_column = target_col
+
+    # Filter to selected feature columns + target
+    if selected_columns and isinstance(selected_columns, list):
+        cols_to_keep = list(selected_columns)
+        if target_col and target_col not in cols_to_keep:
+            cols_to_keep.append(target_col)
+        # Only keep columns that actually exist in the DataFrame
+        cols_to_keep = [c for c in cols_to_keep if c in df.columns]
+        if len(cols_to_keep) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail="Need at least one feature column and a target column.",
+            )
+        df = df[cols_to_keep]
 
     # Run the model
     try:
@@ -81,7 +105,7 @@ async def run_model_endpoint(request: Request):
     # Store result in session
     session["result"] = result
 
-    # Build chart JSONs for classification results
+    # Build chart JSONs based on task type
     charts = {}
     if result.task_type == "classification":
         try:
@@ -103,23 +127,31 @@ async def run_model_endpoint(request: Request):
 
     elif result.task_type == "regression":
         try:
-            charts["actual_vs_predicted"] = actual_vs_predicted_chart(result).to_json()
+            charts["residuals_vs_fitted"] = residuals_vs_fitted(result).to_json()
         except Exception:
-            charts["actual_vs_predicted"] = None
+            charts["residuals_vs_fitted"] = None
         try:
-            charts["residuals"] = residuals_chart(result).to_json()
+            charts["qq_plot"] = qq_plot(result).to_json()
         except Exception:
-            charts["residuals"] = None
+            charts["qq_plot"] = None
         try:
-            charts["feature_importance"] = feature_importance_chart(result).to_json()
+            charts["predicted_vs_actual"] = predicted_vs_actual(result).to_json()
         except Exception:
-            charts["feature_importance"] = None
+            charts["predicted_vs_actual"] = None
+        try:
+            charts["residual_distribution"] = residual_distribution(result).to_json()
+        except Exception:
+            charts["residual_distribution"] = None
 
     elif result.task_type == "clustering":
         try:
-            charts["cluster_scatter"] = cluster_scatter_chart(result).to_json()
+            charts["cluster_scatter"] = cluster_scatter_pca(result).to_json()
         except Exception:
             charts["cluster_scatter"] = None
+        try:
+            charts["silhouette"] = silhouette_plot(result).to_json()
+        except Exception:
+            charts["silhouette"] = None
 
     # Store charts for the results page
     session["charts"] = charts

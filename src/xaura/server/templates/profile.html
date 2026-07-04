@@ -23,7 +23,7 @@
             <div class="summary-label">Columns</div>
         </div>
         <div class="summary-card">
-            <div class="summary-value">{{ task_type or "unknown" }}</div>
+            <div class="summary-value" id="task-type-display">{{ task_type or "unknown" }}</div>
             <div class="summary-label">Task Type</div>
         </div>
         <div class="summary-card">
@@ -50,17 +50,16 @@
     </div>
 
     <!-- ── Target Info ────────────────────────────────────────── -->
-    {% if target_column %}
-    <div class="card">
+    <div class="card" id="target-info-card" style="display: {{ 'block' if target_column else 'none' }};">
         <h3 class="card-title">Target Column</h3>
         <div class="target-info">
             <div class="target-detail">
                 <span class="target-label">Column:</span>
-                <span class="target-value">{{ target_column }}</span>
+                <span class="target-value" id="target-col-display">{{ target_column or "None" }}</span>
             </div>
             <div class="target-detail">
                 <span class="target-label">Task:</span>
-                <span class="target-value">{{ task_type }}</span>
+                <span class="target-value" id="task-type-detail-display">{{ task_type or "unknown" }}</span>
             </div>
             <div class="target-detail">
                 <span class="target-label">Imbalanced:</span>
@@ -70,15 +69,23 @@
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- ── Column Details ─────────────────────────────────────── -->
     <div class="card">
-        <h3 class="card-title">Column Details</h3>
+        <div class="card-title-row">
+            <h3 class="card-title">Column Details</h3>
+            <div class="feature-selection-actions">
+                <button type="button" class="btn-link" onclick="toggleAllFeatures(true)">Select All</button>
+                <span class="divider">|</span>
+                <button type="button" class="btn-link" onclick="toggleAllFeatures(false)">Deselect All</button>
+                <span class="feature-count" id="feature-count"></span>
+            </div>
+        </div>
         <div class="table-wrapper">
             <table class="data-table">
                 <thead>
                     <tr>
+                        <th class="th-checkbox"><input type="checkbox" id="select-all-cb" checked onchange="toggleAllFeatures(this.checked)"></th>
                         <th>Column</th>
                         <th>Type</th>
                         <th>Missing</th>
@@ -88,6 +95,13 @@
                 <tbody>
                     {% for col in columns %}
                     <tr>
+                        <td class="td-checkbox">
+                            <input type="checkbox"
+                                   name="feature_col"
+                                   value="{{ col.name }}"
+                                   {% if col.name != target_column %}checked{% endif %}
+                                   onchange="updateFeatureCount()">
+                        </td>
                         <td><strong>{{ col.name }}</strong></td>
                         <td><code>{{ col.dtype }}</code></td>
                         <td>
@@ -148,7 +162,8 @@
                 </div>
                 <div class="form-group">
                     <label for="target-select">Target Column</label>
-                    <select id="target-select" class="form-select">
+                    <select id="target-select" class="form-select" onchange="updateTargetCol('{{ session_id }}', this.value)">
+                        <option value="">None (Clustering)</option>
                         {% for col in columns %}
                         <option value="{{ col.name }}" {% if col.name == target_column %}selected{% endif %}>
                             {{ col.name }}
@@ -156,6 +171,9 @@
                         {% endfor %}
                     </select>
                 </div>
+            </div>
+
+            <div class="form-row" style="margin-top: 16px;">
                 <button class="btn btn-primary" id="run-model-btn" onclick="runModel('{{ session_id }}', document.getElementById('model-select').value, document.getElementById('target-select').value)">
                     Run Model
                 </button>

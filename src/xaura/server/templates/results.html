@@ -64,6 +64,7 @@
     {% if charts %}
     <h3 class="section-title" style="text-align: left; margin-top: 32px;">Interactive Charts</h3>
     <div class="charts-grid">
+        {# Classification charts #}
         {% if charts.get('confusion_matrix') %}
         <div class="chart-container" id="chart-confusion-matrix"></div>
         {% endif %}
@@ -73,17 +74,29 @@
         {% if charts.get('precision_recall') %}
         <div class="chart-container" id="chart-precision-recall"></div>
         {% endif %}
-        {% if charts.get('actual_vs_predicted') %}
-        <div class="chart-container" id="chart-actual-vs-predicted"></div>
-        {% endif %}
-        {% if charts.get('residuals') %}
-        <div class="chart-container" id="chart-residuals"></div>
-        {% endif %}
         {% if charts.get('feature_importance') %}
         <div class="chart-container" id="chart-feature-importance"></div>
         {% endif %}
+        {# Regression charts #}
+        {% if charts.get('residuals_vs_fitted') %}
+        <div class="chart-container" id="chart-residuals-vs-fitted"></div>
+        {% endif %}
+        {% if charts.get('qq_plot') %}
+        <div class="chart-container" id="chart-qq-plot"></div>
+        {% endif %}
+        {% if charts.get('predicted_vs_actual') %}
+        <div class="chart-container" id="chart-predicted-vs-actual"></div>
+        {% endif %}
+        {% if charts.get('residual_distribution') %}
+        <div class="chart-container" id="chart-residual-distribution"></div>
+        {% endif %}
+
+        {# Clustering charts #}
         {% if charts.get('cluster_scatter') %}
         <div class="chart-container" id="chart-cluster-scatter"></div>
+        {% endif %}
+        {% if charts.get('silhouette') %}
+        <div class="chart-container" id="chart-silhouette"></div>
         {% endif %}
     </div>
     {% endif %}
@@ -101,6 +114,7 @@
 <script>
     // Render charts from server-provided JSON
     document.addEventListener("DOMContentLoaded", function() {
+        {# Classification #}
         {% if charts.get('confusion_matrix') %}
         renderChart("chart-confusion-matrix", '{{ charts.confusion_matrix | safe }}');
         {% endif %}
@@ -110,17 +124,29 @@
         {% if charts.get('precision_recall') %}
         renderChart("chart-precision-recall", '{{ charts.precision_recall | safe }}');
         {% endif %}
-        {% if charts.get('actual_vs_predicted') %}
-        renderChart("chart-actual-vs-predicted", '{{ charts.actual_vs_predicted | safe }}');
-        {% endif %}
-        {% if charts.get('residuals') %}
-        renderChart("chart-residuals", '{{ charts.residuals | safe }}');
-        {% endif %}
         {% if charts.get('feature_importance') %}
         renderChart("chart-feature-importance", '{{ charts.feature_importance | safe }}');
         {% endif %}
+        {# Regression #}
+        {% if charts.get('residuals_vs_fitted') %}
+        renderChart("chart-residuals-vs-fitted", '{{ charts.residuals_vs_fitted | safe }}');
+        {% endif %}
+        {% if charts.get('qq_plot') %}
+        renderChart("chart-qq-plot", '{{ charts.qq_plot | safe }}');
+        {% endif %}
+        {% if charts.get('predicted_vs_actual') %}
+        renderChart("chart-predicted-vs-actual", '{{ charts.predicted_vs_actual | safe }}');
+        {% endif %}
+        {% if charts.get('residual_distribution') %}
+        renderChart("chart-residual-distribution", '{{ charts.residual_distribution | safe }}');
+        {% endif %}
+
+        {# Clustering #}
         {% if charts.get('cluster_scatter') %}
         renderChart("chart-cluster-scatter", '{{ charts.cluster_scatter | safe }}');
+        {% endif %}
+        {% if charts.get('silhouette') %}
+        renderChart("chart-silhouette", '{{ charts.silhouette | safe }}');
         {% endif %}
     });
 </script>
