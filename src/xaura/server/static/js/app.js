@@ -145,6 +145,19 @@ async function runModel(sessionId, modelName, targetCol) {
     const loadingOverlay = document.getElementById("loading-overlay");
     if (loadingOverlay) loadingOverlay.style.display = "flex";
 
+    // Collect selected feature columns
+    const checkboxes = document.querySelectorAll('input[name="feature_col"]:checked');
+    const selectedColumns = Array.from(checkboxes).map(cb => cb.value);
+
+    // Filter out the target column from features
+    const featureCols = selectedColumns.filter(col => col !== targetCol);
+
+    if (featureCols.length === 0) {
+        if (loadingOverlay) loadingOverlay.style.display = "none";
+        alert("Please select at least one feature column.");
+        return;
+    }
+
     try {
         const response = await fetch("/api/run", {
             method: "POST",
@@ -153,6 +166,7 @@ async function runModel(sessionId, modelName, targetCol) {
                 session_id: sessionId,
                 model_name: modelName,
                 target_col: targetCol,
+                selected_columns: featureCols,
             }),
         });
 
@@ -168,6 +182,37 @@ async function runModel(sessionId, modelName, targetCol) {
         alert("Error: " + err.message);
     }
 }
+
+
+// ── Feature Column Helpers ──────────────────────────────────────────
+
+/**
+ * Toggle all feature checkboxes on or off.
+ */
+function toggleAllFeatures(checked) {
+    const checkboxes = document.querySelectorAll('input[name="feature_col"]');
+    checkboxes.forEach(cb => { cb.checked = checked; });
+    updateFeatureCount();
+}
+
+/**
+ * Update the feature count display.
+ */
+function updateFeatureCount() {
+    const total = document.querySelectorAll('input[name="feature_col"]').length;
+    const checked = document.querySelectorAll('input[name="feature_col"]:checked').length;
+    const countEl = document.getElementById("feature-count");
+    if (countEl) {
+        countEl.textContent = `${checked}/${total} selected`;
+    }
+}
+
+// Initialize count on page load
+document.addEventListener("DOMContentLoaded", function() {
+    if (document.getElementById("feature-count")) {
+        updateFeatureCount();
+    }
+});
 
 
 // ── Export Download ─────────────────────────────────────────────────
