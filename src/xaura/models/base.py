@@ -217,6 +217,14 @@ class BaseModel(ABC):
         # Split data
         X_train, X_test, y_train, y_test = self._split_data(df, target, test_size)
 
+        # Encode string target labels (required by XGBoost / LightGBM)
+        label_encoder = None
+        if y_train.dtype == object or y_train.dtype.name == "category":
+            label_encoder = LabelEncoder()
+            label_encoder.fit(pd.concat([y_train, y_test]))
+            y_train = pd.Series(label_encoder.transform(y_train), index=y_train.index)
+            y_test = pd.Series(label_encoder.transform(y_test), index=y_test.index)
+
         # Encode categoricals
         X_train_enc, X_test_enc, encoders = self._encode_categoricals(X_train, X_test)
 
@@ -235,6 +243,11 @@ class BaseModel(ABC):
         probabilities = None
         if self.task_type == "classification" and hasattr(model, "predict_proba"):
             probabilities = model.predict_proba(X_test_enc)
+
+        # Decode labels back for evaluation if they were encoded
+        if label_encoder is not None:
+            y_test = pd.Series(label_encoder.inverse_transform(y_test), index=y_test.index)
+            predictions = label_encoder.inverse_transform(predictions)
 
         # Evaluate
         if self.task_type == "classification":
