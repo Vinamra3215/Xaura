@@ -23,7 +23,7 @@
             <div class="summary-label">Columns</div>
         </div>
         <div class="summary-card">
-            <div class="summary-value">{{ task_type or "unknown" }}</div>
+            <div class="summary-value" id="task-type-display">{{ task_type or "unknown" }}</div>
             <div class="summary-label">Task Type</div>
         </div>
         <div class="summary-card">
@@ -56,11 +56,11 @@
         <div class="target-info">
             <div class="target-detail">
                 <span class="target-label">Column:</span>
-                <span class="target-value">{{ target_column }}</span>
+                <span class="target-value" id="target-col-display">{{ target_column }}</span>
             </div>
             <div class="target-detail">
                 <span class="target-label">Task:</span>
-                <span class="target-value">{{ task_type }}</span>
+                <span class="target-value" id="task-type-detail-display">{{ task_type }}</span>
             </div>
             <div class="target-detail">
                 <span class="target-label">Imbalanced:</span>
@@ -164,7 +164,7 @@
                 </div>
                 <div class="form-group">
                     <label for="target-select">Target Column</label>
-                    <select id="target-select" class="form-select">
+                    <select id="target-select" class="form-select" onchange="updateTargetCol('{{ session_id }}', this.value)">
                         {% for col in columns %}
                         <option value="{{ col.name }}" {% if col.name == target_column %}selected{% endif %}>
                             {{ col.name }}

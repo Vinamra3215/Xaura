@@ -224,6 +224,46 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 
+// ── Target Column Update ────────────────────────────────────────────
+
+/**
+ * Dynamically update the target column and task type on the server,
+ * then update the UI task type displays.
+ */
+async function updateTargetCol(sessionId, targetCol) {
+    try {
+        const response = await fetch("/api/profile/update_target", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                session_id: sessionId,
+                target_col: targetCol,
+            }),
+        });
+
+        if (!response.ok) {
+            console.error("Failed to update target column");
+            return;
+        }
+
+        const data = await response.json();
+        const newTaskType = data.task_type || "unknown";
+
+        // Update the UI
+        const typeDisplay = document.getElementById("task-type-display");
+        const typeDetailDisplay = document.getElementById("task-type-detail-display");
+        const targetColDisplay = document.getElementById("target-col-display");
+
+        if (typeDisplay) typeDisplay.textContent = newTaskType;
+        if (typeDetailDisplay) typeDetailDisplay.textContent = newTaskType;
+        if (targetColDisplay) targetColDisplay.textContent = targetCol;
+
+    } catch (err) {
+        console.error("Error updating target column:", err);
+    }
+}
+
+
 // ── Export Download ─────────────────────────────────────────────────
 
 /**
