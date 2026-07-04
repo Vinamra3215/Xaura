@@ -153,6 +153,37 @@
                         {% endfor %}
                     </select>
                 </div>
+            </div>
+
+            <!-- Feature Column Selection -->
+            <div class="feature-selection">
+                <div class="feature-selection-header">
+                    <label>Feature Columns</label>
+                    <div class="feature-selection-actions">
+                        <button type="button" class="btn-link" onclick="toggleAllFeatures(true)">Select All</button>
+                        <span class="divider">|</span>
+                        <button type="button" class="btn-link" onclick="toggleAllFeatures(false)">Deselect All</button>
+                        <span class="feature-count" id="feature-count"></span>
+                    </div>
+                </div>
+                <div class="feature-checklist" id="feature-checklist">
+                    {% for col in columns %}
+                    <label class="feature-checkbox">
+                        <input type="checkbox"
+                               name="feature_col"
+                               value="{{ col.name }}"
+                               {% if col.name != target_column %}checked{% endif %}
+                               onchange="updateFeatureCount()">
+                        <span class="checkbox-label">
+                            {{ col.name }}
+                            <code>{{ col.dtype }}</code>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-row" style="margin-top: 16px;">
                 <button class="btn btn-primary" id="run-model-btn" onclick="runModel('{{ session_id }}', document.getElementById('model-select').value, document.getElementById('target-select').value)">
                     Run Model
                 </button>
