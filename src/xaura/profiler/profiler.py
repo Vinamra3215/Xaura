@@ -358,6 +358,16 @@ _TARGET_NAMES = {
     "outcome",
     "response",
     "dependent",
+    # Common regression targets
+    "price",
+    "salary",
+    "value",
+    "amount",
+    "cost",
+    "revenue",
+    "income",
+    "sales",
+    "medv",
 }
 
 
