@@ -62,7 +62,9 @@ async def run_model_endpoint(request: Request):
     body = await request.json()
     session_id = body.get("session_id", "")
     model_name = body.get("model_name", "")
-    target_col = body.get("target_col", "")
+    target_col = body.get("target_col")
+    if target_col == "":
+        target_col = None
     selected_columns = body.get("selected_columns", None)
 
     sessions = request.app.state.sessions
@@ -77,7 +79,7 @@ async def run_model_endpoint(request: Request):
         raise HTTPException(status_code=400, detail="model_name is required.")
 
     # Override target column if user specified one
-    if target_col and target_col != profile.target_column:
+    if target_col != profile.target_column:
         profile.target_column = target_col
 
     # Filter to selected feature columns + target

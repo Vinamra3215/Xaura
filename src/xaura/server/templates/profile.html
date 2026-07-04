@@ -50,17 +50,16 @@
     </div>
 
     <!-- ── Target Info ────────────────────────────────────────── -->
-    {% if target_column %}
-    <div class="card">
+    <div class="card" id="target-info-card" style="display: {{ 'block' if target_column else 'none' }};">
         <h3 class="card-title">Target Column</h3>
         <div class="target-info">
             <div class="target-detail">
                 <span class="target-label">Column:</span>
-                <span class="target-value" id="target-col-display">{{ target_column }}</span>
+                <span class="target-value" id="target-col-display">{{ target_column or "None" }}</span>
             </div>
             <div class="target-detail">
                 <span class="target-label">Task:</span>
-                <span class="target-value" id="task-type-detail-display">{{ task_type }}</span>
+                <span class="target-value" id="task-type-detail-display">{{ task_type or "unknown" }}</span>
             </div>
             <div class="target-detail">
                 <span class="target-label">Imbalanced:</span>
@@ -70,7 +69,6 @@
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- ── Column Details ─────────────────────────────────────── -->
     <div class="card">
@@ -165,6 +163,7 @@
                 <div class="form-group">
                     <label for="target-select">Target Column</label>
                     <select id="target-select" class="form-select" onchange="updateTargetCol('{{ session_id }}', this.value)">
+                        <option value="">None (Clustering)</option>
                         {% for col in columns %}
                         <option value="{{ col.name }}" {% if col.name == target_column %}selected{% endif %}>
                             {{ col.name }}

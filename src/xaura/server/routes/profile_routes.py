@@ -109,6 +109,9 @@ async def update_target(request: Request):
     df = session["df"]
     profile = session["profile"]
 
+    if target_col == "":
+        target_col = None
+
     # Update target
     profile.target_column = target_col
 

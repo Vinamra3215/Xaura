@@ -253,10 +253,15 @@ async function updateTargetCol(sessionId, targetCol) {
         const typeDisplay = document.getElementById("task-type-display");
         const typeDetailDisplay = document.getElementById("task-type-detail-display");
         const targetColDisplay = document.getElementById("target-col-display");
+        const targetInfoCard = document.getElementById("target-info-card");
 
         if (typeDisplay) typeDisplay.textContent = newTaskType;
         if (typeDetailDisplay) typeDetailDisplay.textContent = newTaskType;
-        if (targetColDisplay) targetColDisplay.textContent = targetCol;
+        if (targetColDisplay) targetColDisplay.textContent = targetCol || "None";
+
+        if (targetInfoCard) {
+            targetInfoCard.style.display = targetCol ? "block" : "none";
+        }
 
     } catch (err) {
         console.error("Error updating target column:", err);
