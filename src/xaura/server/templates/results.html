@@ -74,6 +74,12 @@
         {% if charts.get('precision_recall') %}
         <div class="chart-container" id="chart-precision-recall"></div>
         {% endif %}
+        {% if charts.get('actual_vs_predicted') %}
+        <div class="chart-container" id="chart-actual-vs-predicted"></div>
+        {% endif %}
+        {% if charts.get('residuals') %}
+        <div class="chart-container" id="chart-residuals"></div>
+        {% endif %}
         {% if charts.get('feature_importance') %}
         <div class="chart-container" id="chart-feature-importance"></div>
         {% endif %}
@@ -124,6 +130,12 @@
         {% endif %}
         {% if charts.get('precision_recall') %}
         renderChart("chart-precision-recall", '{{ charts.precision_recall | safe }}');
+        {% endif %}
+        {% if charts.get('actual_vs_predicted') %}
+        renderChart("chart-actual-vs-predicted", '{{ charts.actual_vs_predicted | safe }}');
+        {% endif %}
+        {% if charts.get('residuals') %}
+        renderChart("chart-residuals", '{{ charts.residuals | safe }}');
         {% endif %}
         {% if charts.get('feature_importance') %}
         renderChart("chart-feature-importance", '{{ charts.feature_importance | safe }}');
