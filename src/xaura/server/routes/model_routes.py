@@ -23,6 +23,7 @@ from xaura import run_model
 from xaura.export import export_run
 from xaura.visualisation.plotly_charts import (
     actual_vs_predicted_chart,
+    cluster_scatter_chart,
     confusion_matrix_chart,
     feature_importance_chart,
     precision_recall_chart,
@@ -113,6 +114,12 @@ async def run_model_endpoint(request: Request):
             charts["feature_importance"] = feature_importance_chart(result).to_json()
         except Exception:
             charts["feature_importance"] = None
+
+    elif result.task_type == "clustering":
+        try:
+            charts["cluster_scatter"] = cluster_scatter_chart(result).to_json()
+        except Exception:
+            charts["cluster_scatter"] = None
 
     # Store charts for the results page
     session["charts"] = charts

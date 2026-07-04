@@ -82,6 +82,9 @@
         {% if charts.get('feature_importance') %}
         <div class="chart-container" id="chart-feature-importance"></div>
         {% endif %}
+        {% if charts.get('cluster_scatter') %}
+        <div class="chart-container" id="chart-cluster-scatter"></div>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -115,6 +118,9 @@
         {% endif %}
         {% if charts.get('feature_importance') %}
         renderChart("chart-feature-importance", '{{ charts.feature_importance | safe }}');
+        {% endif %}
+        {% if charts.get('cluster_scatter') %}
+        renderChart("chart-cluster-scatter", '{{ charts.cluster_scatter | safe }}');
         {% endif %}
     });
 </script>

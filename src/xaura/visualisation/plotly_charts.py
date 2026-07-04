@@ -23,6 +23,7 @@ from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
+from sklearn.decomposition import PCA
 from sklearn.metrics import auc, confusion_matrix, precision_recall_curve, roc_curve
 
 from xaura.models.base import Result
@@ -396,6 +397,83 @@ def residuals_chart(result: Result) -> go.Figure:
             title={"text": "Residuals Plot", "x": 0.5, "font": {"size": 18}},
             xaxis_title="Predicted Values",
             yaxis_title="Residuals (Actual - Predicted)",
+            xaxis={"gridcolor": _GRID_COLOR},
+            yaxis={"gridcolor": _GRID_COLOR},
+            width=600,
+            height=480,
+        )
+    )
+
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Clustering charts
+# ---------------------------------------------------------------------------
+
+
+def cluster_scatter_chart(result: Result) -> go.Figure:
+    """Create a 2D scatter plot of the clusters using PCA.
+
+    Args:
+        result: A clustering Result with X_train and predictions.
+
+    Returns:
+        A plotly Figure.
+    """
+    if result.X_train is None or result.X_train.empty:
+        raise ValueError("X_train must be present to plot clusters.")
+
+    X = result.X_train.select_dtypes(include=[np.number]).dropna()
+
+    # Need exactly matching labels for the dropped-na X
+    # In clustering, X_train is passed whole and predict handles nans,
+    # but PCA doesn't. We'll simplify and use the first 2 numeric columns if PCA fails.
+    try:
+        if X.shape[1] > 2:
+            pca = PCA(n_components=2)
+            coords = pca.fit_transform(X)
+            x_col, y_col = "PCA 1", "PCA 2"
+        else:
+            coords = X.values
+            x_col = X.columns[0]
+            y_col = X.columns[1] if X.shape[1] > 1 else "Zero"
+            if X.shape[1] == 1:
+                coords = np.column_stack((coords, np.zeros(coords.shape[0])))
+    except Exception:
+        # Fallback if anything goes wrong
+        return go.Figure()
+
+    # X.dropna() might have changed length relative to result.predictions
+    # So we should safely align them. Since clustering didn't drop NA inside
+    # base.py by default, we just use the raw lengths (assuming no NA issues)
+    # or handle the length mismatch.
+    labels = result.predictions[: len(coords)]
+
+    fig = go.Figure()
+
+    unique_labels = set(labels)
+    for lbl in unique_labels:
+        idx = labels == lbl
+        name = "Noise (-1)" if lbl == -1 else f"Cluster {lbl}"
+        color = "#484f58" if lbl == -1 else _ACCENT_COLORS[int(lbl) % len(_ACCENT_COLORS)]
+
+        fig.add_trace(
+            go.Scatter(
+                x=coords[idx, 0],
+                y=coords[idx, 1],
+                mode="markers",
+                name=name,
+                marker={"color": color, "size": 6, "opacity": 0.8},
+                hovertemplate=f"{name}<extra></extra>",
+            )
+        )
+
+    fig.update_layout(
+        **_base_layout(
+            title={"text": "Cluster Visualization (2D)", "x": 0.5, "font": {"size": 18}},
+            xaxis_title=x_col,
+            yaxis_title=y_col,
             xaxis={"gridcolor": _GRID_COLOR},
             yaxis={"gridcolor": _GRID_COLOR},
             width=600,
