@@ -22,9 +22,11 @@ import xaura.models.regressors  # noqa: F401
 from xaura import run_model
 from xaura.export import export_run
 from xaura.visualisation.plotly_charts import (
+    actual_vs_predicted_chart,
     confusion_matrix_chart,
     feature_importance_chart,
     precision_recall_chart,
+    residuals_chart,
     roc_curve_chart,
 )
 
@@ -93,6 +95,20 @@ async def run_model_endpoint(request: Request):
             charts["precision_recall"] = precision_recall_chart(result).to_json()
         except Exception:
             charts["precision_recall"] = None
+        try:
+            charts["feature_importance"] = feature_importance_chart(result).to_json()
+        except Exception:
+            charts["feature_importance"] = None
+
+    elif result.task_type == "regression":
+        try:
+            charts["actual_vs_predicted"] = actual_vs_predicted_chart(result).to_json()
+        except Exception:
+            charts["actual_vs_predicted"] = None
+        try:
+            charts["residuals"] = residuals_chart(result).to_json()
+        except Exception:
+            charts["residuals"] = None
         try:
             charts["feature_importance"] = feature_importance_chart(result).to_json()
         except Exception:

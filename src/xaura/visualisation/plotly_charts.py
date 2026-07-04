@@ -294,6 +294,118 @@ def precision_recall_chart(result: Result) -> go.Figure:
     return fig
 
 
+# ---------------------------------------------------------------------------
+# Regression charts
+# ---------------------------------------------------------------------------
+
+
+def actual_vs_predicted_chart(result: Result) -> go.Figure:
+    """Create a scatter plot of Actual vs Predicted values.
+
+    Args:
+        result: A regression Result with y_test and predictions.
+
+    Returns:
+        A plotly Figure.
+    """
+    y_true = np.asarray(result.y_test)
+    y_pred = result.predictions
+
+    fig = go.Figure()
+
+    # Scatter plot of actual vs predicted
+    fig.add_trace(
+        go.Scatter(
+            x=y_true,
+            y=y_pred,
+            mode="markers",
+            name="Predictions",
+            marker={"color": _ACCENT_COLORS[0], "size": 6, "opacity": 0.6},
+            hovertemplate="Actual: %{x:.4f}<br>Predicted: %{y:.4f}<extra></extra>",
+        )
+    )
+
+    # Ideal line y=x
+    min_val = min(np.min(y_true), np.min(y_pred))
+    max_val = max(np.max(y_true), np.max(y_pred))
+
+    fig.add_trace(
+        go.Scatter(
+            x=[min_val, max_val],
+            y=[min_val, max_val],
+            mode="lines",
+            name="Ideal (Actual = Predicted)",
+            line={"color": "#484f58", "width": 2, "dash": "dash"},
+        )
+    )
+
+    fig.update_layout(
+        **_base_layout(
+            title={"text": "Actual vs Predicted", "x": 0.5, "font": {"size": 18}},
+            xaxis_title="Actual Values",
+            yaxis_title="Predicted Values",
+            xaxis={"gridcolor": _GRID_COLOR},
+            yaxis={"gridcolor": _GRID_COLOR},
+            width=600,
+            height=480,
+        )
+    )
+
+    return fig
+
+
+def residuals_chart(result: Result) -> go.Figure:
+    """Create a scatter plot of Residuals (Actual - Predicted) vs Predicted values.
+
+    Args:
+        result: A regression Result with y_test and predictions.
+
+    Returns:
+        A plotly Figure.
+    """
+    y_true = np.asarray(result.y_test)
+    y_pred = result.predictions
+    residuals = y_true - y_pred
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=y_pred,
+            y=residuals,
+            mode="markers",
+            name="Residuals",
+            marker={"color": _ACCENT_COLORS[1], "size": 6, "opacity": 0.6},
+            hovertemplate="Predicted: %{x:.4f}<br>Residual: %{y:.4f}<extra></extra>",
+        )
+    )
+
+    # Zero line
+    fig.add_trace(
+        go.Scatter(
+            x=[np.min(y_pred), np.max(y_pred)],
+            y=[0, 0],
+            mode="lines",
+            name="Zero Error",
+            line={"color": "#484f58", "width": 2, "dash": "dash"},
+        )
+    )
+
+    fig.update_layout(
+        **_base_layout(
+            title={"text": "Residuals Plot", "x": 0.5, "font": {"size": 18}},
+            xaxis_title="Predicted Values",
+            yaxis_title="Residuals (Actual - Predicted)",
+            xaxis={"gridcolor": _GRID_COLOR},
+            yaxis={"gridcolor": _GRID_COLOR},
+            width=600,
+            height=480,
+        )
+    )
+
+    return fig
+
+
 def feature_importance_chart(result: Result) -> go.Figure:
     """Create a horizontal bar chart of feature importances.
 
