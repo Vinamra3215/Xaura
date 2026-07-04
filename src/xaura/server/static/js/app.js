@@ -196,14 +196,23 @@ function toggleAllFeatures(checked) {
 }
 
 /**
- * Update the feature count display.
+ * Update the feature count display and select-all checkbox state.
  */
 function updateFeatureCount() {
     const total = document.querySelectorAll('input[name="feature_col"]').length;
     const checked = document.querySelectorAll('input[name="feature_col"]:checked').length;
+
+    // Update count display
     const countEl = document.getElementById("feature-count");
     if (countEl) {
         countEl.textContent = `${checked}/${total} selected`;
+    }
+
+    // Update select-all checkbox state
+    const selectAllCb = document.getElementById("select-all-cb");
+    if (selectAllCb) {
+        selectAllCb.checked = (checked === total && total > 0);
+        selectAllCb.indeterminate = (checked > 0 && checked < total);
     }
 }
 
