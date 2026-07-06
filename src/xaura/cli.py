@@ -36,7 +36,7 @@ def main():
 
 @main.command()
 @click.option("--host", default="127.0.0.1", help="Host to bind the server to.")
-@click.option("--port", default=8000, type=int, help="Port to run the server on.")
+@click.option("--port", default=7070, type=int, help="Port to run the server on.")
 @click.option("--reload", "use_reload", is_flag=True, help="Enable auto-reload for development.")
 def serve(host: str, port: int, use_reload: bool):
     """Start the XAURA FastAPI web server.
