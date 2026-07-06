@@ -211,6 +211,7 @@ def _auto_log(result: Result, db_path: str | None = None) -> str | None:
             "model_name": result.model_name,
             "task_type": result.task_type,
             "config": result.config,
+            "profile_summary": result.profile_summary,
             "metrics": result.metrics,
             "duration_seconds": result.train_time_seconds,
             "dataset_name": result.dataset_hash[:16] if result.dataset_hash else "",
