@@ -467,12 +467,29 @@ def _detect_target_leakage(
         return []
 
     leaky = []
-    for col in numeric_df.columns:
+
+    # Get the target series safely (in case target_col is somehow duplicated)
+    target_idx = numeric_df.columns.get_loc(target_col)
+    if isinstance(target_idx, np.ndarray | slice):
+        # If target column name is duplicated, just take the first one
+        target_series = (
+            numeric_df.iloc[:, np.where(target_idx)[0][0]]
+            if isinstance(target_idx, np.ndarray)
+            else numeric_df.iloc[:, target_idx.start]
+        )
+    else:
+        target_series = numeric_df.iloc[:, target_idx]
+
+    for i in range(numeric_df.shape[1]):
+        col = numeric_df.columns[i]
         if col == target_col:
             continue
-        corr = numeric_df[col].corr(numeric_df[target_col])
+
+        series = numeric_df.iloc[:, i]
+        corr = series.corr(target_series)
+
         if abs(corr) >= threshold:
-            leaky.append((col, round(corr, 4)))
+            leaky.append((str(col), round(corr, 4)))
 
     return leaky
 
