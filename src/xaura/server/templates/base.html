@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,6 +20,7 @@
 
     {% block head %}{% endblock %}
 </head>
+
 <body>
     <!-- ── Navbar ─────────────────────────────────────────────── -->
     <nav class="navbar">
@@ -30,7 +32,6 @@
             <div class="nav-links">
                 <a href="/" class="nav-link {% block nav_home %}{% endblock %}">Home</a>
                 <a href="#" class="nav-link {% block nav_profile %}{% endblock %}" id="nav-profile">Profile</a>
-                <a href="#" class="nav-link {% block nav_run %}{% endblock %}" id="nav-run">Run</a>
                 <a href="/experiments" class="nav-link {% block nav_experiments %}{% endblock %}">Experiments</a>
                 <a href="#" class="nav-link {% block nav_results %}{% endblock %}" id="nav-results">Results</a>
             </div>
@@ -45,7 +46,7 @@
     <!-- ── Footer ─────────────────────────────────────────────── -->
     <footer class="footer">
         <div class="footer-container">
-            <span class="footer-brand">XAURA v0.1.0</span>
+            <span class="footer-brand">XAURA-1.0</span>
             <span class="footer-tagline">eXtendable Automated Unified Research & Analytics</span>
         </div>
     </footer>
@@ -54,4 +55,5 @@
     <script src="/static/js/app.js"></script>
     {% block scripts %}{% endblock %}
 </body>
+
 </html>
