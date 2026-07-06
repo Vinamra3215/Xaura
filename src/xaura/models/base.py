@@ -87,6 +87,7 @@ class Result:
     profile_summary: dict[str, Any] = field(default_factory=dict)
     dataset_hash: str = ""
     train_time_seconds: float = 0.0
+    run_id: str | None = None
 
     # Model object (for export / further use)
     model_object: Any = None
