@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -104,6 +104,45 @@ def create_app() -> FastAPI:
         return templates.TemplateResponse(
             name="experiments.html",
             request=request,
+        )
+
+    # ── View a single experiment result from the DB ──────────────────
+    @app.get("/experiments/{run_id}/view", response_class=HTMLResponse)
+    async def view_experiment_result(request: Request, run_id: str):
+        """Render the results page for a past experiment stored in SQLite."""
+        import json as _json
+
+        from xaura.store.sqlite_store import get_run
+
+        run = get_run(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="Experiment not found.")
+
+        # Build serialisable metrics
+        raw_metrics = run.get("metrics", {})
+        metrics = {}
+        for k, v in raw_metrics.items():
+            try:
+                metrics[k] = round(float(v), 4)
+            except (TypeError, ValueError):
+                metrics[k] = str(v)
+
+        config_str = _json.dumps(run.get("config", {}), indent=2, default=str)
+
+        return templates.TemplateResponse(
+            name="results.html",
+            request=request,
+            context={
+                "session_id": run_id,
+                "filename": run.get("dataset_name", "dataset"),
+                "model_name": run.get("model_name", "—"),
+                "task_type": run.get("task_type", "—"),
+                "train_time": round(run.get("duration_seconds", 0), 2),
+                "metrics": metrics,
+                "config_str": config_str,
+                "charts": {},
+                "from_experiment": True,
+            },
         )
 
     # ── Include routers ───────────────────────────────────────────────
