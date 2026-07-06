@@ -20,14 +20,48 @@
                     Back to Profile
                 </button>
                 {% endif %}
+                {% if from_experiment %}
+                <button class="btn btn-primary" onclick="window.location.href='/api/export/{{ session_id }}/zip'">
+                    Export ZIP
+                </button>
+                {% else %}
                 <button class="btn btn-primary" onclick="exportResults('{{ session_id }}')">
                     Export ZIP
                 </button>
+                {% endif %}
             </div>
         </div>
         <p class="page-subtitle">{{ filename }} &mdash; {{ model_name }}</p>
     </div>
 
+    {% if profile %}
+    <!-- ── Dataset Profile ────────────────────────────────────── -->
+    <h3 class="section-title" style="text-align: left; margin-top: 0;">Dataset Profile</h3>
+    <div class="summary-grid" style="margin-bottom: 32px;">
+        <div class="summary-card">
+            <div class="summary-value">{{ "{:,}".format(profile.n_rows) }}</div>
+            <div class="summary-label">Rows</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">{{ profile.n_cols }}</div>
+            <div class="summary-label">Columns</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">{{ profile.task_type or "unknown" }}</div>
+            <div class="summary-label">Task Type</div>
+        </div>
+        <div class="summary-card">
+            {% if profile.has_missing %}
+            <div class="summary-value warning">{{ "%.1f"|format(profile.missing_fraction * 100) }}%</div>
+            {% else %}
+            <div class="summary-value success">None</div>
+            {% endif %}
+            <div class="summary-label">Missing Values</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <h3 class="section-title" style="text-align: left; margin-top: 32px;">Model Results</h3>
     <!-- ── Model Info Cards ───────────────────────────────────── -->
     <div class="summary-grid">
         <div class="summary-card">
@@ -104,7 +138,6 @@
         {% if charts.get('silhouette') %}
         <div class="chart-container" id="chart-silhouette"></div>
         {% endif %}
-    </div>
     {% endif %}
 
     <!-- ── Config Panel ───────────────────────────────────────── -->
@@ -112,6 +145,12 @@
         <h3 class="card-title">Hyperparameters</h3>
         <pre class="config-pre">{{ config_str }}</pre>
     </div>
+
+    {% if not charts %}
+    <div class="card" style="margin-top: 24px; text-align: center; padding: 24px; color: var(--text-secondary);">
+        <p style="margin: 0;">Charts are only available for the active session immediately after training.</p>
+    </div>
+    {% endif %}
 
 </section>
 {% endblock %}
