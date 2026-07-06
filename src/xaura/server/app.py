@@ -129,6 +129,17 @@ def create_app() -> FastAPI:
 
         config_str = _json.dumps(run.get("config", {}), indent=2, default=str)
 
+        # Hydrate the profile if it exists
+        import contextlib
+
+        from xaura.profiler.dataprofile import DataProfile
+
+        profile_data = run.get("profile_summary", {})
+        profile = None
+        if profile_data:
+            with contextlib.suppress(Exception):
+                profile = DataProfile.from_dict(profile_data)
+
         return templates.TemplateResponse(
             name="results.html",
             request=request,
@@ -142,6 +153,7 @@ def create_app() -> FastAPI:
                 "config_str": config_str,
                 "charts": {},
                 "from_experiment": True,
+                "profile": profile,
             },
         )
 
