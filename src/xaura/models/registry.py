@@ -138,7 +138,8 @@ def run_model(
 
     # 4. Auto-log to SQLite
     if auto_log:
-        _auto_log(result, db_path)
+        run_id = _auto_log(result, db_path)
+        result.run_id = run_id
 
     # 5. Return
     return result
