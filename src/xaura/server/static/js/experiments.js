@@ -130,6 +130,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td class="col-metrics">${metricsHtml}</td>
                 <td class="col-duration mono">${dur}</td>
                 <td class="col-actions">
+                    <a href="/experiments/${id}/view" class="btn-icon" title="View Results">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </a>
                     <button class="btn-icon" title="Export ZIP" onclick="downloadZip('${id}')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                              stroke="currentColor" stroke-width="2">
