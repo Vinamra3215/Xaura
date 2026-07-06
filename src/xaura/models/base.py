@@ -84,6 +84,7 @@ class Result:
 
     # Config & reproducibility
     config: dict[str, Any] = field(default_factory=dict)
+    profile_summary: dict[str, Any] = field(default_factory=dict)
     dataset_hash: str = ""
     train_time_seconds: float = 0.0
 
@@ -195,9 +196,12 @@ class BaseModel(ABC):
 
         # 2. Handle clustering vs supervised
         if self.task_type == "clustering":
-            return self._run_clustering(df, profile, final_config)
+            result = self._run_clustering(df, profile, final_config)
         else:
-            return self._run_supervised(df, profile, final_config, target_col, test_size)
+            result = self._run_supervised(df, profile, final_config, target_col, test_size)
+
+        result.profile_summary = profile.to_dict()
+        return result
 
     def _run_supervised(
         self,
