@@ -110,3 +110,42 @@ class DataProfile:
                 lines.append(f"    • {w}")
 
         return "\n".join(lines)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert profile to a JSON-serializable dictionary."""
+        return {
+            "shape": self.shape,
+            "feature_types": self.feature_types,
+            "basic_stats": (
+                self.basic_stats.to_json(orient="split") if self.basic_stats is not None else None
+            ),
+            "class_balance": self.class_balance,
+            "missing_values": self.missing_values,
+            "warnings": self.warnings,
+            "target_column": self.target_column,
+            "task_type": self.task_type,
+            "dataset_hash": self.dataset_hash,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DataProfile:
+        """Recreate a DataProfile from a dictionary."""
+        import io
+
+        import pandas as pd
+
+        basic_stats = data.get("basic_stats")
+        if basic_stats is not None:
+            basic_stats = pd.read_json(io.StringIO(basic_stats), orient="split")
+
+        return cls(
+            shape=tuple(data.get("shape", (0, 0))),
+            feature_types=data.get("feature_types", {}),
+            basic_stats=basic_stats,
+            class_balance=data.get("class_balance"),
+            missing_values=data.get("missing_values", {}),
+            warnings=data.get("warnings", []),
+            target_column=data.get("target_column"),
+            task_type=data.get("task_type"),
+            dataset_hash=data.get("dataset_hash", ""),
+        )
