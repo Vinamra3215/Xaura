@@ -74,7 +74,7 @@ def mixed_df():
     return pd.DataFrame(
         {
             "age": np.random.randint(18, 80, n),
-            "income": np.random.uniform(20000, 200000, n),
+            "yearly_income": np.random.uniform(20000, 200000, n),
             "region": np.random.choice(["north", "south", "east", "west"], n),
             "category": np.random.choice(["A", "B", "C"], n),
             "target": np.random.choice([0, 1], n),
