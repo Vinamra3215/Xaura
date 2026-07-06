@@ -11,9 +11,15 @@
         <div class="results-title-row">
             <h1 class="page-title">Model Results</h1>
             <div class="results-actions">
+                {% if from_experiment %}
+                <button class="btn btn-secondary" onclick="window.location.href='/experiments'">
+                    Back to Experiments
+                </button>
+                {% else %}
                 <button class="btn btn-secondary" onclick="window.location.href='/profile/{{ session_id }}'">
                     Back to Profile
                 </button>
+                {% endif %}
                 <button class="btn btn-primary" onclick="exportResults('{{ session_id }}')">
                     Export ZIP
                 </button>
