@@ -312,7 +312,7 @@ class BaseModel(ABC):
             dataset_hash=profile.dataset_hash,
             train_time_seconds=train_time,
             model_object=model,
-            X_train=df,  # Full dataset (no split for clustering)
+            X_train=X,  # Only numeric features used for clustering
         )
 
     # ------------------------------------------------------------------
