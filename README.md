@@ -71,7 +71,11 @@ print(result.metrics)       # {'accuracy': 0.91, 'f1': 0.85, 'recall': 0.78, ...
 print(result.config)        # Full config with all defaults resolved
 print(result.run_id)        # 'a3f8c21d-...' — logged to SQLite automatically
 
-# Step 4: Override defaults if needed
+# Step 4: Show the interactive UI for this run!
+from xaura import show_ui
+show_ui(result)
+
+# Step 5: Override defaults if needed
 result2 = run_model("xgboost_cls", df, data_profile, target_col="target", config={
     "n_estimators": 500,
     "max_depth": 8,
@@ -138,6 +142,7 @@ xaura export a3f8c21d
 | Lasso | `lasso` |
 | Random Forest | `random_forest_reg` |
 | XGBoost | `xgboost_reg` |
+| LightGBM | `lightgbm_reg` |
 
 #### Clustering
 | Model | Identifier |
