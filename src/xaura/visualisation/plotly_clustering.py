@@ -55,8 +55,16 @@ def cluster_scatter_pca(result: Result) -> go.Figure:
     X = np.asarray(result.X_train)
     labels = np.asarray(result.predictions)
 
-    pca = PCA(n_components=2)
-    coords = pca.fit_transform(X)
+    # Need at least 2 features for 2D PCA
+    if X.shape[1] < 2:
+        # If only 1 feature, just pad with zeros for the second axis
+        coords = np.zeros((X.shape[0], 2))
+        coords[:, 0] = X[:, 0]
+        explained = [1.0, 0.0]
+    else:
+        pca = PCA(n_components=2)
+        coords = pca.fit_transform(X)
+        explained = pca.explained_variance_ratio_
 
     fig = go.Figure()
 
@@ -85,7 +93,6 @@ def cluster_scatter_pca(result: Result) -> go.Figure:
             )
         )
 
-    explained = pca.explained_variance_ratio_
     fig.update_layout(
         **plotly_base_layout(
             title="Cluster Scatter (PCA 2D)",

@@ -1,6 +1,6 @@
 """XAURA — eXtendable Automated Unified Research & Analytics."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from xaura.launcher import show_ui
 from xaura.models import run_model
